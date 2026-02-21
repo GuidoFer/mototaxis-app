@@ -1,34 +1,33 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import SolicitudViaje from './pages/SolicitudViaje'
+import SolicitudEncomienda from './pages/SolicitudEncomienda'
+import ConductorView from './pages/ConductorView'
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <BrowserRouter>
+      <Routes>
+        {/* Pasajero */}
+        <Route path="/moto/:ciudad" element={<SolicitudViaje />} />
+        <Route path="/moto/encomienda/:ciudad" element={<SolicitudEncomienda />} />
+
+        {/* Conductor */}
+        <Route path="/moto/conductor/:id" element={<ConductorView />} />
+
+        {/* Inicio temporal */}
+        <Route path="/" element={
+          <div style={{ padding: 32, fontFamily: 'Arial' }}>
+            <h2>🏍️ Mototaxis API — OK</h2>
+            <p>Rutas disponibles:</p>
+            <ul>
+              <li><a href="/moto/santa-cruz">/moto/santa-cruz — Solicitar viaje</a></li>
+              <li><a href="/moto/encomienda/santa-cruz">/moto/encomienda/santa-cruz — Encomienda</a></li>
+              <li><a href="/moto/conductor/MOT-001">/moto/conductor/MOT-001 — Panel conductor</a></li>
+            </ul>
+          </div>
+        } />
+      </Routes>
+    </BrowserRouter>
   )
 }
 
