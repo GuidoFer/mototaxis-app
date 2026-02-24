@@ -11,9 +11,17 @@ const API_URL = import.meta.env.VITE_API_URL;
 async function apiGet(params = {}) {
   const query = new URLSearchParams(params).toString();
   const response = await fetch(`${API_URL}?${query}`);
-  if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+
+  if (!response.ok) {
+    throw new Error(`HTTP error: ${response.status}`);
+  }
+
   const data = await response.json();
-  if (!data.success) throw new Error(data.error || 'Error en el servidor');
+
+  if (!data.success) {
+    throw new Error(data.error || 'Error en el servidor');
+  }
+
   return data.data;
 }
 
@@ -26,9 +34,17 @@ async function apiPost(body = {}) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+
+  if (!response.ok) {
+    throw new Error(`HTTP error: ${response.status}`);
+  }
+
   const data = await response.json();
-  if (!data.success) throw new Error(data.error || 'Error en el servidor');
+
+  if (!data.success) {
+    throw new Error(data.error || 'Error en el servidor');
+  }
+
   return data.data;
 }
 
@@ -51,6 +67,9 @@ export const getViajesHoy = (asociacionId) =>
 export const getEncomiendasHoy = (asociacionId) =>
   apiGet({ get: 'encomiendas_hoy', asociacion_id: asociacionId });
 
+export const getConductor = (conductorId) =>
+  apiGet({ get: 'conductor', conductor_id: conductorId });
+
 export const crearViaje = (datos) =>
   apiPost({ action: 'crearViaje', ...datos });
 
@@ -58,13 +77,32 @@ export const crearEncomienda = (datos) =>
   apiPost({ action: 'crearEncomienda', ...datos });
 
 export const aceptarSolicitud = (codigo, conductorId, asociacionId) =>
-  apiPost({ action: 'aceptarSolicitud', codigo, conductor_id: conductorId, asociacion_id: asociacionId });
+  apiPost({
+    action: 'aceptarSolicitud',
+    codigo,
+    conductor_id: conductorId,
+    asociacion_id: asociacionId
+  });
 
 export const cancelarSolicitud = (codigo, tipo) =>
-  apiPost({ action: 'cancelarSolicitud', codigo, tipo });
+  apiPost({
+    action: 'cancelarSolicitud',
+    codigo,
+    tipo
+  });
 
 export const actualizarEstadoConductor = (conductorId, sheetId, nuevoEstado) =>
-  apiPost({ action: 'actualizarEstadoConductor', conductor_id: conductorId, sheet_id: sheetId, nuevo_estado: nuevoEstado });
+  apiPost({
+    action: 'actualizarEstadoConductor',
+    conductor_id: conductorId,
+    sheet_id: sheetId,
+    nuevo_estado: nuevoEstado
+  });
 
 export const completarViaje = (codigo, tarifaFinal, sheetIdConductor) =>
-  apiPost({ action: 'completarViaje', codigo, tarifa_final: tarifaFinal, sheet_id_conductor: sheetIdConductor });
+  apiPost({
+    action: 'completarViaje',
+    codigo,
+    tarifa_final: tarifaFinal,
+    sheet_id_conductor: sheetIdConductor
+  });
