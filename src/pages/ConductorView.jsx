@@ -98,7 +98,6 @@ export default function ConductorView() {
       `🏍️ Vehículo: ${conductor.tipo_vehiculo}\n` +
       `🔖 Solicitud: ${viaje.codigo}\n\n` +
       `📍 Ahora voy a compartirte mi ubicación en tiempo real.\n` +
-      `➡️ Abre este chat → toca el clip 📎 → Ubicación → Compartir ubicación en tiempo real.\n\n` +
       `Tarifa: Bs. ${tarifaFinal || viaje.tarifa_base || 4}`
     )
     window.open(`https://wa.me/${celularWA}?text=${mensaje}`, '_blank')

@@ -337,7 +337,7 @@ export default function SolicitudViaje() {
           <input
             className="input"
             type="text"
-            placeholder="Ej: Frente a la farmacia Chávez"
+            placeholder="Ej: Frente a la farmacia, frente a una casa blanca"
             value={referenciaOrigen}
             onChange={e => setReferenciaOrigen(e.target.value)}
           />
