@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
-import { getUvs, crearViaje } from '../services/api'
+import { getUvs, crearViaje, cancelarSolicitud, getViaje, getConductor } from '../services/api'
 import '../styles/SolicitudViaje.css'
 
 export default function SolicitudViaje() {
@@ -15,9 +15,12 @@ export default function SolicitudViaje() {
   const [destinoReferencia, setDestinoReferencia] = useState('')
   const [celularPasajero, setCelularPasajero] = useState('')
   const [cargando, setCargando] = useState(false)
+  const [cancelando, setCancelando] = useState(false)
   const [mensaje, setMensaje] = useState(null)
   const [solicitudExitosa, setSolicitudExitosa] = useState(null)
   const [segundosRestantes, setSegundosRestantes] = useState(0)
+  const [cancelado, setCancelado] = useState(false)
+  const [linkCancelacion, setLinkCancelacion] = useState(null)
   const timerRef = useRef(null)
 
   useEffect(() => {
@@ -60,6 +63,37 @@ export default function SolicitudViaje() {
     }
   }
 
+  const handleCancelarPasajero = async () => {
+    const confirmar = window.confirm('¿Seguro que quieres cancelar tu viaje?')
+    if (!confirmar) return
+
+    setCancelando(true)
+    try {
+      const viaje = await getViaje(solicitudExitosa.codigo)
+      await cancelarSolicitud(solicitudExitosa.codigo, 'pasajero')
+
+      if (viaje.conductor_id) {
+        const conductorData = await getConductor(viaje.conductor_id)
+        const celular = String(conductorData.celular).replace(/\D/g, '')
+        const celularWA = celular.startsWith('591') ? celular : `591${celular}`
+        const mensaje = encodeURIComponent(
+          `❌ El pasajero canceló su viaje.\n\n` +
+          `🔖 Solicitud: ${solicitudExitosa.codigo}\n` +
+          `📍 Zona: ${uvOrigen}\n` +
+          `📱 Pasajero: ${celularPasajero}\n\n` +
+          `Ya puedes tomar otro viaje.`
+        )
+        setLinkCancelacion(`https://wa.me/${celularWA}?text=${mensaje}`)
+      }
+
+      setCancelado(true)
+    } catch (err) {
+      setMensaje({ tipo: 'error', texto: err.message })
+    } finally {
+      setCancelando(false)
+    }
+  }
+
   const abrirWhatsApp = () => {
     const telefono = '59160605127'
     const texto = encodeURIComponent(
@@ -82,9 +116,51 @@ export default function SolicitudViaje() {
     setCelularPasajero('')
     setTipoVehiculo('moto')
     setTipoServicio('normal')
+    setCancelado(false)
+    setLinkCancelacion(null)
   }
 
   if (solicitudExitosa) {
+    if (cancelado) {
+      return (
+        <div className="app">
+          <div className="header">
+            <span className="header-icon">🏍️</span>
+            <div className="header-texto">
+              <h1>Mototaxis</h1>
+              <p>{ciudad?.replace('-', ' ') || 'Santa Cruz'}</p>
+            </div>
+          </div>
+          <div className="exito-screen">
+            <div className="exito-icon">❌</div>
+            <h2 className="exito-titulo">Viaje cancelado</h2>
+            
+            {cancelado && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
+                <div className="mensaje error">
+                  Viaje cancelado.
+                </div>
+                {linkCancelacion && (
+                  <a
+                    href={linkCancelacion}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn-whatsapp"
+                    style={{ textAlign: 'center', textDecoration: 'none', display: 'block' }}
+                  >
+                    📲 Avisar al conductor por WhatsApp
+                  </a>
+                )}
+                <button className="btn-nuevo" onClick={resetear}>
+                  Volver al inicio
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div className="app">
         <div className="header">
@@ -106,6 +182,14 @@ export default function SolicitudViaje() {
           </p>
           <button className="btn-whatsapp" onClick={abrirWhatsApp}>
             📍 Abrir WhatsApp y compartir ubicación
+          </button>
+          <button 
+            className="btn-cancelar-solicitud" 
+            onClick={handleCancelarPasajero}
+            disabled={cancelando}
+            style={{ marginTop: '0.5rem', background: '#e53e3e' }}
+          >
+            {cancelando ? 'Cancelando...' : '❌ Cancelar viaje'}
           </button>
           <button className="btn-nuevo" onClick={resetear}>
             Nueva solicitud

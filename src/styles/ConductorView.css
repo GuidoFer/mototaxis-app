@@ -429,3 +429,21 @@ body {
 }
 .mensaje-toast.error { background: var(--rojo-bg); border: 1px solid var(--rojo-borde); color: #ff8a8a; }
 .mensaje-toast.exito { background: var(--verde-bg); border: 1px solid var(--verde-borde); color: #6dffaa; }
+
+.btn-whatsapp-pasajero {
+  background: #25d366;
+  border: none;
+  border-radius: 12px;
+  color: white;
+  cursor: pointer;
+  font-family: 'Syne', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding: 15px;
+  width: 100%;
+  transition: all 0.2s;
+}
+.btn-whatsapp-pasajero:hover {
+  background: #1db954;
+  transform: translateY(-1px);
+}

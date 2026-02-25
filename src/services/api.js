@@ -29,23 +29,20 @@ async function apiGet(params = {}) {
  * POST genérico
  */
 async function apiPost(body = {}) {
+  const formData = new FormData()
+  formData.append('data', JSON.stringify(body))
+
   const response = await fetch(API_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+    body: formData,
+  })
 
-  if (!response.ok) {
-    throw new Error(`HTTP error: ${response.status}`);
-  }
-
-  const data = await response.json();
-
-  if (!data.success) {
-    throw new Error(data.error || 'Error en el servidor');
-  }
-
-  return data.data;
+  if (!response.ok) throw new Error(`HTTP error: ${response.status}`)
+  const text = await response.text()
+  console.log('API POST response:', text)
+  const data = JSON.parse(text)
+  if (!data.success) throw new Error(data.error || 'Error en el servidor')
+  return data.data
 }
 
 // ================================================
@@ -69,6 +66,9 @@ export const getEncomiendasHoy = (asociacionId) =>
 
 export const getConductor = (conductorId) =>
   apiGet({ get: 'conductor', conductor_id: conductorId });
+
+export const getViaje = (codigo) =>
+  apiGet({ get: 'viaje', codigo })
 
 export const crearViaje = (datos) =>
   apiPost({ action: 'crearViaje', ...datos });

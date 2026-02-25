@@ -373,3 +373,24 @@ body {
   from { background-position: 200% 0; }
   to { background-position: -200% 0; }
 }
+
+.btn-cancelar-pasajero {
+  background: transparent;
+  border: 1.5px solid var(--error);
+  border-radius: 14px;
+  color: var(--error);
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 14px;
+  width: 100%;
+  transition: all 0.2s;
+}
+.btn-cancelar-pasajero:hover:not(:disabled) {
+  background: rgba(230, 57, 70, 0.12);
+}
+.btn-cancelar-pasajero:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

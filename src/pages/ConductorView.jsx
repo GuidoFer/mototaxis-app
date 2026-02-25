@@ -21,6 +21,7 @@ export default function ConductorView() {
 
   const [viajes, setViajes] = useState([])
   const [cargandoViajes, setCargandoViajes] = useState(false)
+  const [viajesIgnorados, setViajesIgnorados] = useState([])
 
   const [viajeAsignado, setViajeAsignado] = useState(null)
   const [tarifaFinal, setTarifaFinal] = useState('4')
@@ -28,22 +29,90 @@ export default function ConductorView() {
   const [actualizando, setActualizando] = useState(false)
   const [toast, setToast] = useState(null)
 
-  // FIX Punto 1: useRef para limpiar timeout correctamente
   const toastTimeoutRef = useRef(null)
+  const audioCtxRef = useRef(null)
+  const alarmaIntervalRef = useRef(null)
+  const viajesAnterioresRef = useRef([])
 
+  // ── TOAST ────────────────────────────────────────────────
   const mostrarToast = (tipo, texto) => {
     setToast({ tipo, texto })
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
     toastTimeoutRef.current = setTimeout(() => setToast(null), 4000)
   }
 
-  useEffect(() => {
-    return () => {
-      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
+  // ── ALARMA ───────────────────────────────────────────────
+  const sonarAlarma = () => {
+    if (navigator.vibrate) {
+      navigator.vibrate([500, 300, 500, 300, 500])
     }
-  }, [])
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)()
+      audioCtxRef.current = ctx
 
-  // Cargar conductor al montar
+      const tocar = (frecuencia, inicio, duracion) => {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.type = 'square'
+        osc.frequency.setValueAtTime(frecuencia, ctx.currentTime + inicio)
+        gain.gain.setValueAtTime(0.3, ctx.currentTime + inicio)
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + inicio + duracion)
+        osc.start(ctx.currentTime + inicio)
+        osc.stop(ctx.currentTime + inicio + duracion)
+      }
+
+      tocar(880, 0, 0.15)
+      tocar(1100, 0.2, 0.15)
+      tocar(880, 0.4, 0.15)
+      tocar(1100, 0.6, 0.15)
+    } catch (e) {
+      console.log('Audio no disponible:', e)
+    }
+  }
+
+  const iniciarAlarma = () => {
+    sonarAlarma()
+    let repeticiones = 0
+    alarmaIntervalRef.current = setInterval(() => {
+      repeticiones++
+      if (repeticiones >= 60) {
+        detenerAlarma()
+        return
+      }
+      sonarAlarma()
+    }, 2000)
+  }
+
+  const detenerAlarma = () => {
+    if (alarmaIntervalRef.current) {
+      clearInterval(alarmaIntervalRef.current)
+      alarmaIntervalRef.current = null
+    }
+    if (audioCtxRef.current) {
+      audioCtxRef.current.close()
+      audioCtxRef.current = null
+    }
+  }
+
+  // ── WHATSAPP ─────────────────────────────────────────────
+  const avisarPasajero = (viaje) => {
+    const celular = String(viaje.celular_pasajero).replace(/\D/g, '')
+    const celularWA = celular.startsWith('591') ? celular : `591${celular}`
+    const mensaje = encodeURIComponent(
+      `🏍️ ¡Tu mototaxi está en camino!\n\n` +
+      `👤 Conductor: ${conductor.nombre}\n` +
+      `🦺 Chaleco: ${conductor.color_chaleco}\n` +
+      `🏍️ Vehículo: ${conductor.tipo_vehiculo}\n` +
+      `🔖 Solicitud: ${viaje.codigo}\n\n` +
+      `📍 Voy a compartirte mi ubicación en tiempo real por este chat para que puedas seguir mi ruta.\n\n` +
+      `Tarifa: Bs. ${tarifaFinal || viaje.tarifa_base || 4}`
+    )
+    window.open(`https://wa.me/${celularWA}?text=${mensaje}`, '_blank')
+  }
+
+  // ── CARGAR CONDUCTOR ─────────────────────────────────────
   useEffect(() => {
     getConductor(conductorId)
       .then(data => setConductor(data))
@@ -51,18 +120,18 @@ export default function ConductorView() {
       .finally(() => setCargando(false))
   }, [conductorId])
 
-  // Cargar viajes pendientes
+  // ── CARGAR VIAJES ─────────────────────────────────────────
   const cargarViajes = useCallback(async () => {
     if (!conductor) return
     setCargandoViajes(true)
     try {
       const todos = await getViajesHoy(conductor.asociacion_id)
 
-      // FIX Punto 2: filtrar también por tipo_vehiculo del conductor
       const pendientes = todos.filter(v =>
         v.estado === 'notificado' &&
         v.tipo_vehiculo === conductor.tipo_vehiculo &&
-        (v.asociaciones_notificadas || '').includes(conductor.asociacion_id)
+        (v.asociaciones_notificadas || '').includes(conductor.asociacion_id) &&
+        !viajesIgnorados.includes(v.codigo)
       )
 
       const miViaje = todos.find(v =>
@@ -70,17 +139,28 @@ export default function ConductorView() {
         ['asignado', 'en_camino'].includes(v.estado)
       )
 
+      // Detectar solicitud nueva y disparar alarma
+      const codigosAnteriores = viajesAnterioresRef.current.map(v => v.codigo)
+      const hayNueva = pendientes.some(v => !codigosAnteriores.includes(v.codigo))
+      if (hayNueva && pendientes.length > 0) {
+        iniciarAlarma()
+      } else if (pendientes.length === 0) {
+        detenerAlarma()
+      }
+
+      viajesAnterioresRef.current = pendientes
       setViajes(pendientes)
       setViajeAsignado(miViaje || null)
       if (miViaje) setTarifaFinal(String(miViaje.tarifa_base || 4))
+
     } catch (err) {
       mostrarToast('error', 'Error al cargar viajes: ' + err.message)
     } finally {
       setCargandoViajes(false)
     }
-  }, [conductor, conductorId])
+  }, [conductor, conductorId, viajesIgnorados])
 
-  // Auto-refresh — se detiene si hay viaje asignado
+  // ── AUTO REFRESH ──────────────────────────────────────────
   useEffect(() => {
     if (!conductor) return
     cargarViajes()
@@ -90,7 +170,15 @@ export default function ConductorView() {
     return () => clearInterval(intervalo)
   }, [conductor, cargarViajes, viajeAsignado])
 
-  // Cambiar disponibilidad
+  // ── CLEANUP ───────────────────────────────────────────────
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
+      detenerAlarma()
+    }
+  }, [])
+
+  // ── CAMBIAR ESTADO ────────────────────────────────────────
   const cambiarEstado = async (nuevoEstado) => {
     if (actualizando) return
     setActualizando(true)
@@ -105,9 +193,10 @@ export default function ConductorView() {
     }
   }
 
-  // Aceptar viaje
+  // ── ACEPTAR VIAJE ─────────────────────────────────────────
   const handleAceptar = async (viaje) => {
     if (actualizando) return
+    detenerAlarma()
     setActualizando(true)
     try {
       await aceptarSolicitud(viaje.codigo, conductorId, conductor.asociacion_id)
@@ -116,7 +205,7 @@ export default function ConductorView() {
       setViajeAsignado({ ...viaje, conductor_id: conductorId, estado: 'asignado' })
       setTarifaFinal(String(viaje.tarifa_base || 4))
       setViajes([])
-      mostrarToast('exito', '¡Viaje aceptado! El pasajero fue notificado.')
+      mostrarToast('exito', '¡Viaje aceptado! Avisa al pasajero por WhatsApp.')
     } catch (err) {
       if (err.message?.includes('ya_asignado')) {
         mostrarToast('error', 'Otro conductor aceptó primero.')
@@ -129,7 +218,7 @@ export default function ConductorView() {
     }
   }
 
-  // Completar viaje
+  // ── COMPLETAR VIAJE ───────────────────────────────────────
   const handleCompletar = async () => {
     if (!viajeAsignado || actualizando) return
     setActualizando(true)
@@ -138,7 +227,7 @@ export default function ConductorView() {
       await completarViaje(viajeAsignado.codigo, tarifa, conductor.sheet_id)
       setConductor(prev => ({ ...prev, estado: 'disponible' }))
       setViajeAsignado(null)
-      mostrarToast('exito', `¡Viaje completado! Tarifa registrada: Bs. ${tarifa}`)
+      mostrarToast('exito', `¡Viaje completado! Tarifa: Bs. ${tarifa}`)
       cargarViajes()
     } catch (err) {
       mostrarToast('error', err.message)
@@ -147,18 +236,28 @@ export default function ConductorView() {
     }
   }
 
-  // Cancelar viaje
+  // ── CANCELAR VIAJE ────────────────────────────────────────
   const handleCancelar = async () => {
     if (!viajeAsignado || actualizando) return
     const confirmar = window.confirm('¿Cancelar este viaje? Esto quedará registrado.')
     if (!confirmar) return
+
+    const celular = String(viajeAsignado.celular_pasajero).replace(/\D/g, '')
+    const celularWA = celular.startsWith('591') ? celular : `591${celular}`
+    const mensaje = encodeURIComponent(
+      `❌ Lo sentimos, el conductor no pudo tomar tu viaje.\n\n` +
+      `🔖 Solicitud: ${viajeAsignado.codigo}\n\n` +
+      `Por favor vuelve a solicitar un mototaxi desde la app.`
+    )
+    window.open(`https://wa.me/${celularWA}?text=${mensaje}`, '_blank')
+
     setActualizando(true)
     try {
       await cancelarSolicitud(viajeAsignado.codigo, 'conductor')
       await actualizarEstadoConductor(conductorId, conductor.sheet_id, 'disponible')
       setConductor(prev => ({ ...prev, estado: 'disponible' }))
       setViajeAsignado(null)
-      mostrarToast('error', 'Viaje cancelado. El pasajero fue notificado.')
+      mostrarToast('error', 'Viaje cancelado. Mensaje enviado al pasajero.')
       cargarViajes()
     } catch (err) {
       mostrarToast('error', err.message)
@@ -167,7 +266,7 @@ export default function ConductorView() {
     }
   }
 
-  // ── Guards ────────────────────────────────────────────────
+  // ── GUARDS ────────────────────────────────────────────────
   if (cargando) {
     return (
       <div className="conductor-app">
@@ -191,7 +290,7 @@ export default function ConductorView() {
     )
   }
 
-  // ── Render ────────────────────────────────────────────────
+  // ── RENDER ────────────────────────────────────────────────
   return (
     <div className="conductor-app">
 
@@ -281,6 +380,13 @@ export default function ConductorView() {
                 <span className="viaje-fila-texto">{viajeAsignado.celular_pasajero}</span>
               </div>
             </div>
+
+            <button
+              className="btn-whatsapp-pasajero"
+              onClick={() => avisarPasajero(viajeAsignado)}
+            >
+              📍 Avisar al pasajero y compartir ubicación
+            </button>
 
             <div className="tarifa-input-group">
               <label>Tarifa final (Bs.)</label>
@@ -389,7 +495,10 @@ export default function ConductorView() {
                     </button>
                     <button
                       className="btn-rechazar"
-                      onClick={() => mostrarToast('error', 'Solicitud ignorada.')}
+                      onClick={() => {
+                        detenerAlarma()
+                        setViajesIgnorados(prev => [...prev, viaje.codigo])
+                      }}
                       disabled={actualizando}
                     >
                       Ignorar
