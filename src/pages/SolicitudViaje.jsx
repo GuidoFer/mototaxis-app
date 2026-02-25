@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { getUvs, crearViaje, cancelarSolicitud, getViaje, getConductor } from '../services/api'
+import ModalEncomienda from '../components/ModalEncomienda'
 import '../styles/SolicitudViaje.css'
 
 export default function SolicitudViaje() {
@@ -21,6 +22,7 @@ export default function SolicitudViaje() {
   const [segundosRestantes, setSegundosRestantes] = useState(0)
   const [cancelado, setCancelado] = useState(false)
   const [linkCancelacion, setLinkCancelacion] = useState(null)
+  const [modalEncomienda, setModalEncomienda] = useState(false)
   const timerRef = useRef(null)
 
   useEffect(() => {
@@ -205,8 +207,14 @@ export default function SolicitudViaje() {
         <span className="header-icon">🏍️</span>
         <div className="header-texto">
           <h1>Pedir Mototaxi</h1>
-          <p>{ciudad?.replace('-', ' ') || 'Santa Cruz'} · Tarifa base Bs. 4</p>
+          <p>{ciudad?.replace('-', ' ') || 'Santa Cruz'} · Bs. 4</p>
         </div>
+        <button
+          className="btn-encomienda-header"
+          onClick={() => setModalEncomienda(true)}
+        >
+          📦 Encomienda
+        </button>
       </div>
 
       <div className="form">
@@ -313,6 +321,14 @@ export default function SolicitudViaje() {
         )}
 
       </div>
+
+      {modalEncomienda && (
+        <ModalEncomienda
+          uvs={uvs}
+          celularPasajero={celularPasajero}
+          onCerrar={() => setModalEncomienda(false)}
+        />
+      )}
     </div>
   )
 }
