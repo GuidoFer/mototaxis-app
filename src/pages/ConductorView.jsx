@@ -10,7 +10,8 @@ import {
 } from '../services/api'
 import '../styles/ConductorView.css'
 
-const INTERVALO_REFRESH = 30000
+const INTERVALO_BASE = 15000    // 15 seg normal
+const INTERVALO_ACTIVO = 10000  // 10 seg cuando hay viajes visibles
 
 export default function ConductorView() {
   const { id: conductorId } = useParams()
@@ -22,34 +23,34 @@ export default function ConductorView() {
   const [viajes, setViajes] = useState([])
   const [cargandoViajes, setCargandoViajes] = useState(false)
   const [viajesIgnorados, setViajesIgnorados] = useState([])
+  const [ultimoRefresh, setUltimoRefresh] = useState(null)
 
   const [viajeAsignado, setViajeAsignado] = useState(null)
   const [tarifaFinal, setTarifaFinal] = useState('4')
 
   const [actualizando, setActualizando] = useState(false)
   const [toast, setToast] = useState(null)
+  const [resumenCompletado, setResumenCompletado] = useState(null)
 
   const toastTimeoutRef = useRef(null)
   const audioCtxRef = useRef(null)
   const alarmaIntervalRef = useRef(null)
   const viajesAnterioresRef = useRef([])
+  const intervaloRef = useRef(null)
 
-  // ── TOAST ────────────────────────────────────────────────
+  // ── TOAST ─────────────────────────────────────────────────
   const mostrarToast = (tipo, texto) => {
     setToast({ tipo, texto })
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
     toastTimeoutRef.current = setTimeout(() => setToast(null), 4000)
   }
 
-  // ── ALARMA ───────────────────────────────────────────────
+  // ── ALARMA ────────────────────────────────────────────────
   const sonarAlarma = () => {
-    if (navigator.vibrate) {
-      navigator.vibrate([500, 300, 500, 300, 500])
-    }
+    if (navigator.vibrate) navigator.vibrate([500, 300, 500, 300, 500])
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)()
       audioCtxRef.current = ctx
-
       const tocar = (frecuencia, inicio, duracion) => {
         const osc = ctx.createOscillator()
         const gain = ctx.createGain()
@@ -62,11 +63,10 @@ export default function ConductorView() {
         osc.start(ctx.currentTime + inicio)
         osc.stop(ctx.currentTime + inicio + duracion)
       }
-
-      tocar(880, 0, 0.15)
-      tocar(1100, 0.2, 0.15)
-      tocar(880, 0.4, 0.15)
-      tocar(1100, 0.6, 0.15)
+      tocar(880, 0, 0.2)
+      tocar(1100, 0.25, 0.2)
+      tocar(880, 0.5, 0.2)
+      tocar(1100, 0.75, 0.2)
     } catch (e) {
       console.log('Audio no disponible:', e)
     }
@@ -77,26 +77,17 @@ export default function ConductorView() {
     let repeticiones = 0
     alarmaIntervalRef.current = setInterval(() => {
       repeticiones++
-      if (repeticiones >= 60) {
-        detenerAlarma()
-        return
-      }
+      if (repeticiones >= 60) { detenerAlarma(); return }
       sonarAlarma()
     }, 2000)
   }
 
   const detenerAlarma = () => {
-    if (alarmaIntervalRef.current) {
-      clearInterval(alarmaIntervalRef.current)
-      alarmaIntervalRef.current = null
-    }
-    if (audioCtxRef.current) {
-      audioCtxRef.current.close()
-      audioCtxRef.current = null
-    }
+    if (alarmaIntervalRef.current) { clearInterval(alarmaIntervalRef.current); alarmaIntervalRef.current = null }
+    if (audioCtxRef.current) { audioCtxRef.current.close(); audioCtxRef.current = null }
   }
 
-  // ── WHATSAPP ─────────────────────────────────────────────
+  // ── WHATSAPP ──────────────────────────────────────────────
   const avisarPasajero = (viaje) => {
     const celular = String(viaje.celular_pasajero).replace(/\D/g, '')
     const celularWA = celular.startsWith('591') ? celular : `591${celular}`
@@ -106,13 +97,14 @@ export default function ConductorView() {
       `🦺 Chaleco: ${conductor.color_chaleco}\n` +
       `🏍️ Vehículo: ${conductor.tipo_vehiculo}\n` +
       `🔖 Solicitud: ${viaje.codigo}\n\n` +
-      `📍 Voy a compartirte mi ubicación en tiempo real por este chat para que puedas seguir mi ruta.\n\n` +
+      `📍 Ahora voy a compartirte mi ubicación en tiempo real.\n` +
+      `➡️ Abre este chat → toca el clip 📎 → Ubicación → Compartir ubicación en tiempo real.\n\n` +
       `Tarifa: Bs. ${tarifaFinal || viaje.tarifa_base || 4}`
     )
     window.open(`https://wa.me/${celularWA}?text=${mensaje}`, '_blank')
   }
 
-  // ── CARGAR CONDUCTOR ─────────────────────────────────────
+  // ── CARGAR CONDUCTOR ──────────────────────────────────────
   useEffect(() => {
     getConductor(conductorId)
       .then(data => setConductor(data))
@@ -139,7 +131,7 @@ export default function ConductorView() {
         ['asignado', 'en_camino'].includes(v.estado)
       )
 
-      // Detectar solicitud nueva y disparar alarma
+      // Detectar solicitud nueva
       const codigosAnteriores = viajesAnterioresRef.current.map(v => v.codigo)
       const hayNueva = pendientes.some(v => !codigosAnteriores.includes(v.codigo))
       if (hayNueva && pendientes.length > 0) {
@@ -152,6 +144,7 @@ export default function ConductorView() {
       setViajes(pendientes)
       setViajeAsignado(miViaje || null)
       if (miViaje) setTarifaFinal(String(miViaje.tarifa_base || 4))
+      setUltimoRefresh(new Date())
 
     } catch (err) {
       mostrarToast('error', 'Error al cargar viajes: ' + err.message)
@@ -160,15 +153,20 @@ export default function ConductorView() {
     }
   }, [conductor, conductorId, viajesIgnorados])
 
-  // ── AUTO REFRESH ──────────────────────────────────────────
+  // ── AUTO REFRESH dinámico ─────────────────────────────────
   useEffect(() => {
     if (!conductor) return
+
     cargarViajes()
-    const intervalo = setInterval(() => {
+
+    const intervalo = viajes.length > 0 ? INTERVALO_ACTIVO : INTERVALO_BASE
+
+    intervaloRef.current = setInterval(() => {
       if (!viajeAsignado) cargarViajes()
-    }, INTERVALO_REFRESH)
-    return () => clearInterval(intervalo)
-  }, [conductor, cargarViajes, viajeAsignado])
+    }, intervalo)
+
+    return () => clearInterval(intervaloRef.current)
+  }, [conductor, cargarViajes, viajeAsignado, viajes.length])
 
   // ── CLEANUP ───────────────────────────────────────────────
   useEffect(() => {
@@ -193,7 +191,7 @@ export default function ConductorView() {
     }
   }
 
-  // ── ACEPTAR VIAJE ─────────────────────────────────────────
+  // ── ACEPTAR ───────────────────────────────────────────────
   const handleAceptar = async (viaje) => {
     if (actualizando) return
     detenerAlarma()
@@ -218,16 +216,28 @@ export default function ConductorView() {
     }
   }
 
-  // ── COMPLETAR VIAJE ───────────────────────────────────────
+  // ── COMPLETAR ─────────────────────────────────────────────
   const handleCompletar = async () => {
     if (!viajeAsignado || actualizando) return
     setActualizando(true)
     try {
       const tarifa = parseFloat(tarifaFinal) || 4
       await completarViaje(viajeAsignado.codigo, tarifa, conductor.sheet_id)
-      setConductor(prev => ({ ...prev, estado: 'disponible' }))
+
+      // Actualizar conductor localmente
+      const viajesCompletados = (conductor.viajes_completados || 0) + 1
+      setConductor(prev => ({ ...prev, estado: 'disponible', viajes_completados: viajesCompletados }))
+
+      // Mostrar pantalla de resumen
+      setResumenCompletado({
+        codigo: viajeAsignado.codigo,
+        celular: viajeAsignado.celular_pasajero,
+        zona: viajeAsignado.uv_origen,
+        tarifa,
+        viajesHoy: viajesCompletados,
+      })
+
       setViajeAsignado(null)
-      mostrarToast('exito', `¡Viaje completado! Tarifa: Bs. ${tarifa}`)
       cargarViajes()
     } catch (err) {
       mostrarToast('error', err.message)
@@ -236,7 +246,7 @@ export default function ConductorView() {
     }
   }
 
-  // ── CANCELAR VIAJE ────────────────────────────────────────
+  // ── CANCELAR ──────────────────────────────────────────────
   const handleCancelar = async () => {
     if (!viajeAsignado || actualizando) return
     const confirmar = window.confirm('¿Cancelar este viaje? Esto quedará registrado.')
@@ -285,6 +295,48 @@ export default function ConductorView() {
           <span style={{ fontSize: '2.5rem' }}>⚠️</span>
           <p>{error}</p>
           <p style={{ color: '#666', fontSize: '0.8rem' }}>Verifica tu ID de conductor.</p>
+        </div>
+      </div>
+    )
+  }
+
+  // ── PANTALLA RESUMEN COMPLETADO ───────────────────────────
+  if (resumenCompletado) {
+    return (
+      <div className="conductor-app">
+        <div className="resumen-screen">
+          <div className="resumen-icon">✅</div>
+          <h2 className="resumen-titulo">¡Viaje completado!</h2>
+
+          <div className="resumen-card">
+            <div className="resumen-fila">
+              <span className="resumen-label">Código</span>
+              <span className="resumen-valor naranja">{resumenCompletado.codigo}</span>
+            </div>
+            <div className="resumen-fila">
+              <span className="resumen-label">Pasajero</span>
+              <span className="resumen-valor">{resumenCompletado.celular}</span>
+            </div>
+            <div className="resumen-fila">
+              <span className="resumen-label">Zona</span>
+              <span className="resumen-valor">{resumenCompletado.zona}</span>
+            </div>
+            <div className="resumen-fila">
+              <span className="resumen-label">Tarifa cobrada</span>
+              <span className="resumen-valor verde">Bs. {resumenCompletado.tarifa}</span>
+            </div>
+            <div className="resumen-fila">
+              <span className="resumen-label">Viajes completados</span>
+              <span className="resumen-valor verde">{resumenCompletado.viajesHoy}</span>
+            </div>
+          </div>
+
+          <button
+            className="btn-solicitar"
+            onClick={() => setResumenCompletado(null)}
+          >
+            Volver al panel
+          </button>
         </div>
       </div>
     )
@@ -426,13 +478,20 @@ export default function ConductorView() {
               <p className="seccion-titulo">
                 Solicitudes disponibles {viajes.length > 0 && `(${viajes.length})`}
               </p>
-              <button
-                className="btn-refrescar"
-                onClick={cargarViajes}
-                disabled={cargandoViajes}
-              >
-                {cargandoViajes ? '...' : '↻ Actualizar'}
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {ultimoRefresh && (
+                  <span className="ultimo-refresh">
+                    {ultimoRefresh.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  </span>
+                )}
+                <button
+                  className="btn-refrescar"
+                  onClick={cargarViajes}
+                  disabled={cargandoViajes}
+                >
+                  {cargandoViajes ? '...' : '↻'}
+                </button>
+              </div>
             </div>
 
             {cargandoViajes && viajes.length === 0 ? (
@@ -445,7 +504,7 @@ export default function ConductorView() {
                 <span className="empty-icon">🏍️</span>
                 No hay solicitudes en tu zona ahora.<br />
                 <span style={{ fontSize: '0.8rem', color: '#444' }}>
-                  Se actualiza automáticamente cada 30 seg.
+                  Última actualización: {ultimoRefresh?.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) || '—'}
                 </span>
               </div>
             ) : (

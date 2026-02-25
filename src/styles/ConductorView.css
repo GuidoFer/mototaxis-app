@@ -447,3 +447,26 @@ body {
   background: #1db954;
   transform: translateY(-1px);
 }
+/* RESUMEN COMPLETADO */
+.resumen-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  gap: 20px;
+  text-align: center;
+}
+.resumen-icon { font-size: 4rem; animation: pop 0.4s cubic-bezier(0.175,0.885,0.32,1.275); }
+@keyframes pop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.resumen-titulo { font-family: 'Syne', sans-serif; font-size: 1.6rem; font-weight: 800; letter-spacing: -0.03em; }
+.resumen-card { background: var(--gris); border-radius: 16px; padding: 20px; width: 100%; display: flex; flex-direction: column; gap: 14px; }
+.resumen-fila { display: flex; justify-content: space-between; align-items: center; }
+.resumen-label { font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
+.resumen-valor { font-size: 0.95rem; font-weight: 600; }
+.resumen-valor.naranja { color: var(--naranja); }
+.resumen-valor.verde { color: var(--verde); }
+
+/* ULTIMO REFRESH */
+.ultimo-refresh { font-size: 0.72rem; color: #555; font-weight: 500; }

@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom'
 import { getUvs, crearViaje, cancelarSolicitud, getViaje, getConductor } from '../services/api'
 import '../styles/SolicitudViaje.css'
 
+const POLLING_INTERVAL = 10000 // 10 seg
+
 export default function SolicitudViaje() {
   const { ciudad } = useParams()
 
@@ -14,15 +16,22 @@ export default function SolicitudViaje() {
   const [referenciaOrigen, setReferenciaOrigen] = useState('')
   const [destinoReferencia, setDestinoReferencia] = useState('')
   const [celularPasajero, setCelularPasajero] = useState('')
+
   const [cargando, setCargando] = useState(false)
-  const [cancelando, setCancelando] = useState(false)
   const [mensaje, setMensaje] = useState(null)
   const [solicitudExitosa, setSolicitudExitosa] = useState(null)
-  const [segundosRestantes, setSegundosRestantes] = useState(0)
+
+  const [cancelando, setCancelando] = useState(false)
   const [cancelado, setCancelado] = useState(false)
   const [linkCancelacion, setLinkCancelacion] = useState(null)
-  const timerRef = useRef(null)
 
+  const [conductorAsignado, setConductorAsignado] = useState(null)
+
+  const [segundosRestantes, setSegundosRestantes] = useState(0)
+  const timerRef = useRef(null)
+  const pollingRef = useRef(null)
+
+  // Cargar UVs
   useEffect(() => {
     getUvs()
       .then(data => setUvs(data))
@@ -30,11 +39,37 @@ export default function SolicitudViaje() {
       .finally(() => setCargandoUvs(false))
   }, [])
 
+  // Timer anti-flood
   useEffect(() => {
     if (segundosRestantes <= 0) return
     timerRef.current = setTimeout(() => setSegundosRestantes(s => s - 1), 1000)
     return () => clearTimeout(timerRef.current)
   }, [segundosRestantes])
+
+  // Polling — detectar conductor asignado
+  useEffect(() => {
+    if (!solicitudExitosa || cancelado || conductorAsignado) return
+
+    pollingRef.current = setInterval(async () => {
+      try {
+        const viaje = await getViaje(solicitudExitosa.codigo)
+
+        if (viaje.estado === 'asignado' && viaje.conductor_id) {
+          clearInterval(pollingRef.current)
+          const conductor = await getConductor(viaje.conductor_id)
+          setConductorAsignado(conductor)
+        }
+
+        if (['cancelado_conductor', 'cancelado_pasajero'].includes(viaje.estado)) {
+          clearInterval(pollingRef.current)
+        }
+      } catch (e) {
+        console.log('Polling error:', e)
+      }
+    }, POLLING_INTERVAL)
+
+    return () => clearInterval(pollingRef.current)
+  }, [solicitudExitosa, cancelado, conductorAsignado])
 
   const btnDeshabilitado = cargando || segundosRestantes > 0
 
@@ -63,11 +98,26 @@ export default function SolicitudViaje() {
     }
   }
 
+  const abrirWhatsApp = () => {
+    const telefono = '59160605127'
+    const texto = encodeURIComponent(
+      `🏍️ Solicitud ${solicitudExitosa.codigo}\n` +
+      `Zona: ${uvOrigen}\n` +
+      `Referencia: ${referenciaOrigen}\n` +
+      (destinoReferencia ? `Destino: ${destinoReferencia}\n` : '') +
+      `Vehículo: ${tipoVehiculo === 'moto' ? 'Moto' : 'Torito'}\n` +
+      `Servicio: ${tipoServicio === 'premium' ? '⭐ Premium' : 'Normal'}`
+    )
+    window.open(`https://wa.me/${telefono}?text=${texto}`, '_blank')
+  }
+
   const handleCancelarPasajero = async () => {
     const confirmar = window.confirm('¿Seguro que quieres cancelar tu viaje?')
     if (!confirmar) return
 
     setCancelando(true)
+    clearInterval(pollingRef.current)
+
     try {
       const viaje = await getViaje(solicitudExitosa.codigo)
       await cancelarSolicitud(solicitudExitosa.codigo, 'pasajero')
@@ -94,21 +144,10 @@ export default function SolicitudViaje() {
     }
   }
 
-  const abrirWhatsApp = () => {
-    const telefono = '59160605127'
-    const texto = encodeURIComponent(
-      `🏍️ Solicitud ${solicitudExitosa.codigo}\n` +
-      `Zona: ${uvOrigen}\n` +
-      `Referencia: ${referenciaOrigen}\n` +
-      (destinoReferencia ? `Destino: ${destinoReferencia}\n` : '') +
-      `Vehículo: ${tipoVehiculo === 'moto' ? 'Moto' : 'Torito'}\n` +
-      `Servicio: ${tipoServicio === 'premium' ? '⭐ Premium' : 'Normal'}`
-    )
-    window.open(`https://wa.me/${telefono}?text=${texto}`, '_blank')
-  }
-
   const resetear = () => {
+    clearInterval(pollingRef.current)
     setSolicitudExitosa(null)
+    setConductorAsignado(null)
     setMensaje(null)
     setUvOrigen('')
     setReferenciaOrigen('')
@@ -120,47 +159,83 @@ export default function SolicitudViaje() {
     setLinkCancelacion(null)
   }
 
-  if (solicitudExitosa) {
-    if (cancelado) {
-      return (
-        <div className="app">
-          <div className="header">
-            <span className="header-icon">🏍️</span>
-            <div className="header-texto">
-              <h1>Mototaxis</h1>
-              <p>{ciudad?.replace('-', ' ') || 'Santa Cruz'}</p>
-            </div>
-          </div>
-          <div className="exito-screen">
-            <div className="exito-icon">❌</div>
-            <h2 className="exito-titulo">Viaje cancelado</h2>
-            
-            {cancelado && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
-                <div className="mensaje error">
-                  Viaje cancelado.
-                </div>
-                {linkCancelacion && (
-                  <a
-                    href={linkCancelacion}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="btn-whatsapp"
-                    style={{ textAlign: 'center', textDecoration: 'none', display: 'block' }}
-                  >
-                    📲 Avisar al conductor por WhatsApp
-                  </a>
-                )}
-                <button className="btn-nuevo" onClick={resetear}>
-                  Volver al inicio
-                </button>
-              </div>
-            )}
+  // ── PANTALLA: CONDUCTOR ENCONTRADO ────────────────────────
+  if (conductorAsignado) {
+    return (
+      <div className="app">
+        <div className="header">
+          <span className="header-icon">🏍️</span>
+          <div className="header-texto">
+            <h1>Mototaxis</h1>
+            <p>{ciudad?.replace('-', ' ') || 'Santa Cruz'}</p>
           </div>
         </div>
-      )
-    }
+        <div className="exito-screen">
+          <div className="exito-icon" style={{ animation: 'pop 0.4s cubic-bezier(0.175,0.885,0.32,1.275)' }}>
+            🏍️
+          </div>
+          <h2 className="exito-titulo">¡Conductor en camino!</h2>
+          <p className="exito-desc">
+            Un conductor aceptó tu solicitud y está yendo a recogerte.
+          </p>
 
+          <div className="conductor-info-pasajero">
+            <div className="conductor-info-fila">
+              <span className="conductor-info-label">Conductor</span>
+              <span className="conductor-info-valor">{conductorAsignado.nombre}</span>
+            </div>
+            <div className="conductor-info-fila">
+              <span className="conductor-info-label">Chaleco</span>
+              <span className="conductor-info-valor" style={{ textTransform: 'capitalize' }}>
+                {conductorAsignado.color_chaleco}
+              </span>
+            </div>
+            <div className="conductor-info-fila">
+              <span className="conductor-info-label">Vehículo</span>
+              <span className="conductor-info-valor" style={{ textTransform: 'capitalize' }}>
+                {conductorAsignado.tipo_vehiculo}
+              </span>
+            </div>
+          </div>
+
+          <p className="exito-desc" style={{ fontSize: '0.82rem' }}>
+            El conductor te enviará su ubicación en tiempo real por WhatsApp. Mantente atento al chat.
+          </p>
+
+          {!cancelado && (
+            <button
+              className="btn-cancelar-pasajero"
+              onClick={handleCancelarPasajero}
+              disabled={cancelando}
+            >
+              {cancelando ? 'Cancelando...' : '❌ Cancelar mi viaje'}
+            </button>
+          )}
+
+          {cancelado && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
+              <div className="mensaje error">Viaje cancelado.</div>
+              {linkCancelacion && (
+                <a
+                  href={linkCancelacion}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-whatsapp"
+                  style={{ textAlign: 'center', textDecoration: 'none', display: 'block' }}
+                >
+                  📲 Avisar al conductor por WhatsApp
+                </a>
+              )}
+              <button className="btn-nuevo" onClick={resetear}>Volver al inicio</button>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // ── PANTALLA: ESPERANDO CONDUCTOR ─────────────────────────
+  if (solicitudExitosa) {
     return (
       <div className="app">
         <div className="header">
@@ -174,38 +249,68 @@ export default function SolicitudViaje() {
           <div className="exito-icon">✅</div>
           <h2 className="exito-titulo">¡Solicitud enviada!</h2>
           <p className="exito-desc">
-            Estamos buscando un conductor disponible en tu zona. En unos segundos recibirás confirmación.
+            Buscando conductor disponible en tu zona...
           </p>
           <div className="exito-codigo">{solicitudExitosa.codigo}</div>
+
+          <div className="buscando-indicator">
+            <span className="buscando-dot" />
+            <span className="buscando-dot" />
+            <span className="buscando-dot" />
+          </div>
+
           <p className="exito-desc" style={{ fontSize: '0.8rem' }}>
-            Ahora abre WhatsApp y comparte tu <strong>ubicación en tiempo real</strong> para que el conductor te encuentre.
+            Cuando un conductor acepte, esta pantalla se actualizará automáticamente.
           </p>
+
           <button className="btn-whatsapp" onClick={abrirWhatsApp}>
-            📍 Abrir WhatsApp y compartir ubicación
+            📍 Compartir mi ubicación por WhatsApp
           </button>
-          <button 
-            className="btn-cancelar-solicitud" 
-            onClick={handleCancelarPasajero}
-            disabled={cancelando}
-            style={{ marginTop: '0.5rem', background: '#e53e3e' }}
-          >
-            {cancelando ? 'Cancelando...' : '❌ Cancelar viaje'}
-          </button>
-          <button className="btn-nuevo" onClick={resetear}>
-            Nueva solicitud
-          </button>
+
+          {!cancelado && (
+            <button
+              className="btn-cancelar-pasajero"
+              onClick={handleCancelarPasajero}
+              disabled={cancelando}
+            >
+              {cancelando ? 'Cancelando...' : '❌ Cancelar mi viaje'}
+            </button>
+          )}
+
+          {cancelado && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
+              <div className="mensaje error">Viaje cancelado.</div>
+              {linkCancelacion && (
+                <a
+                  href={linkCancelacion}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-whatsapp"
+                  style={{ textAlign: 'center', textDecoration: 'none', display: 'block' }}
+                >
+                  📲 Avisar al conductor por WhatsApp
+                </a>
+              )}
+              <button className="btn-nuevo" onClick={resetear}>Volver al inicio</button>
+            </div>
+          )}
+
+          {!cancelado && (
+            <button className="btn-nuevo" onClick={resetear}>Nueva solicitud</button>
+          )}
         </div>
       </div>
     )
   }
 
+  // ── FORMULARIO ────────────────────────────────────────────
   return (
     <div className="app">
       <div className="header">
         <span className="header-icon">🏍️</span>
         <div className="header-texto">
           <h1>Pedir Mototaxi</h1>
-          <p>{ciudad?.replace('-', ' ') || 'Santa Cruz'} · Tarifa base Bs. 4</p>
+          <p>{ciudad?.replace('-', ' ') || 'Santa Cruz'} · Bs. 4</p>
         </div>
       </div>
 

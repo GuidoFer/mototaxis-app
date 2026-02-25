@@ -394,3 +394,52 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
 }
+/* CONDUCTOR INFO — vista pasajero */
+.conductor-info-pasajero {
+  background: var(--gris);
+  border: 1.5px solid var(--naranja);
+  border-radius: 14px;
+  padding: 18px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.conductor-info-fila {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.conductor-info-label {
+  font-size: 0.75rem;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.conductor-info-valor {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--blanco);
+}
+
+/* BUSCANDO ANIMACIÓN */
+.buscando-indicator {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  margin: 4px 0;
+}
+.buscando-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--naranja);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.buscando-dot:nth-child(2) { animation-delay: 0.2s; }
+.buscando-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes pulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
