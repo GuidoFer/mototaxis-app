@@ -3,7 +3,8 @@ import { useParams } from 'react-router-dom'
 import { getUvs, crearViaje, cancelarSolicitud, getViaje, getConductor } from '../services/api'
 import '../styles/SolicitudViaje.css'
 
-const POLLING_INTERVAL = 10000 // 10 seg
+const POLLING_INTERVAL = 10000  // 10 seg
+const TIMEOUT_SIN_CONDUCTOR = 60000  // 1 minuto
 
 export default function SolicitudViaje() {
   const { ciudad } = useParams()
@@ -11,10 +12,9 @@ export default function SolicitudViaje() {
   const [uvs, setUvs] = useState([])
   const [cargandoUvs, setCargandoUvs] = useState(true)
   const [uvOrigen, setUvOrigen] = useState('')
-  const [tipoVehiculo, setTipoVehiculo] = useState('moto')
-  const [tipoServicio, setTipoServicio] = useState('normal')
   const [referenciaOrigen, setReferenciaOrigen] = useState('')
   const [destinoReferencia, setDestinoReferencia] = useState('')
+  const [tipoServicio, setTipoServicio] = useState('normal')
   const [celularPasajero, setCelularPasajero] = useState('')
 
   const [cargando, setCargando] = useState(false)
@@ -26,10 +26,14 @@ export default function SolicitudViaje() {
   const [linkCancelacion, setLinkCancelacion] = useState(null)
 
   const [conductorAsignado, setConductorAsignado] = useState(null)
+  const [viajeCompletado, setViajeCompletado] = useState(false)
+  const [sinConductor, setSinConductor] = useState(false)
 
   const [segundosRestantes, setSegundosRestantes] = useState(0)
+
   const timerRef = useRef(null)
   const pollingRef = useRef(null)
+  const timeoutRef = useRef(null)
 
   // Cargar UVs
   useEffect(() => {
@@ -46,9 +50,15 @@ export default function SolicitudViaje() {
     return () => clearTimeout(timerRef.current)
   }, [segundosRestantes])
 
-  // Polling — detectar conductor asignado
+  // Polling — detectar conductor asignado o viaje completado
   useEffect(() => {
-    if (!solicitudExitosa || cancelado || conductorAsignado) return
+    if (!solicitudExitosa || cancelado || conductorAsignado || viajeCompletado) return
+
+    // Timeout 1 minuto sin conductor
+    timeoutRef.current = setTimeout(() => {
+      clearInterval(pollingRef.current)
+      setSinConductor(true)
+    }, TIMEOUT_SIN_CONDUCTOR)
 
     pollingRef.current = setInterval(async () => {
       try {
@@ -56,20 +66,33 @@ export default function SolicitudViaje() {
 
         if (viaje.estado === 'asignado' && viaje.conductor_id) {
           clearInterval(pollingRef.current)
+          clearTimeout(timeoutRef.current)
           const conductor = await getConductor(viaje.conductor_id)
           setConductorAsignado(conductor)
+          setSinConductor(false)
+        }
+
+        if (viaje.estado === 'completado') {
+          clearInterval(pollingRef.current)
+          clearTimeout(timeoutRef.current)
+          setViajeCompletado(true)
+          setConductorAsignado(null)
         }
 
         if (['cancelado_conductor', 'cancelado_pasajero'].includes(viaje.estado)) {
           clearInterval(pollingRef.current)
+          clearTimeout(timeoutRef.current)
         }
       } catch (e) {
         console.log('Polling error:', e)
       }
     }, POLLING_INTERVAL)
 
-    return () => clearInterval(pollingRef.current)
-  }, [solicitudExitosa, cancelado, conductorAsignado])
+    return () => {
+      clearInterval(pollingRef.current)
+      clearTimeout(timeoutRef.current)
+    }
+  }, [solicitudExitosa, cancelado, conductorAsignado, viajeCompletado])
 
   const btnDeshabilitado = cargando || segundosRestantes > 0
 
@@ -77,6 +100,7 @@ export default function SolicitudViaje() {
     setMensaje(null)
     if (!uvOrigen) return setMensaje({ tipo: 'error', texto: 'Selecciona tu zona.' })
     if (!referenciaOrigen.trim()) return setMensaje({ tipo: 'error', texto: 'Ingresa una referencia de dónde estás.' })
+    if (!destinoReferencia.trim()) return setMensaje({ tipo: 'error', texto: 'Ingresa tu destino.' })
     if (!celularPasajero.trim()) return setMensaje({ tipo: 'error', texto: 'Ingresa tu número de celular.' })
 
     setCargando(true)
@@ -84,12 +108,13 @@ export default function SolicitudViaje() {
       const resultado = await crearViaje({
         celular_pasajero: celularPasajero.trim(),
         uv_origen: uvOrigen,
-        tipo_vehiculo: tipoVehiculo,
+        tipo_vehiculo: 'moto',
         tipo_servicio: tipoServicio,
         referencia_origen: referenciaOrigen.trim(),
         destino_referencia: destinoReferencia.trim(),
       })
       setSolicitudExitosa(resultado)
+      setSinConductor(false)
       setSegundosRestantes(30)
     } catch (err) {
       setMensaje({ tipo: 'error', texto: err.message })
@@ -98,17 +123,25 @@ export default function SolicitudViaje() {
     }
   }
 
-  const abrirWhatsApp = () => {
-    const telefono = '59160605127'
-    const texto = encodeURIComponent(
-      `🏍️ Solicitud ${solicitudExitosa.codigo}\n` +
-      `Zona: ${uvOrigen}\n` +
-      `Referencia: ${referenciaOrigen}\n` +
-      (destinoReferencia ? `Destino: ${destinoReferencia}\n` : '') +
-      `Vehículo: ${tipoVehiculo === 'moto' ? 'Moto' : 'Torito'}\n` +
-      `Servicio: ${tipoServicio === 'premium' ? '⭐ Premium' : 'Normal'}`
+  const reintentar = () => {
+    setSinConductor(false)
+    setConductorAsignado(null)
+    // Reinicia el polling con el mismo código
+    // El useEffect lo detecta porque sinConductor cambia
+  }
+
+  const enviarUbicacion = () => {
+    const celular = String(conductorAsignado.celular).replace(/\D/g, '')
+    const celularWA = celular.startsWith('591') ? celular : `591${celular}`
+    const mensaje = encodeURIComponent(
+      `🏍️ Solicitud: ${solicitudExitosa.codigo}\n` +
+      `📍 Estoy en: ${uvOrigen}\n` +
+      `🏠 Referencia: ${referenciaOrigen}\n` +
+      `🏁 Destino: ${destinoReferencia}\n` +
+      `📱 Mi celular: ${celularPasajero}\n\n` +
+      `👇 Ahora te comparto mi ubicación en tiempo real.`
     )
-    window.open(`https://wa.me/${telefono}?text=${texto}`, '_blank')
+    window.open(`https://wa.me/${celularWA}?text=${mensaje}`, '_blank')
   }
 
   const handleCancelarPasajero = async () => {
@@ -117,6 +150,7 @@ export default function SolicitudViaje() {
 
     setCancelando(true)
     clearInterval(pollingRef.current)
+    clearTimeout(timeoutRef.current)
 
     try {
       const viaje = await getViaje(solicitudExitosa.codigo)
@@ -126,14 +160,13 @@ export default function SolicitudViaje() {
         const conductorData = await getConductor(viaje.conductor_id)
         const celular = String(conductorData.celular).replace(/\D/g, '')
         const celularWA = celular.startsWith('591') ? celular : `591${celular}`
-        const mensaje = encodeURIComponent(
+        const msg = encodeURIComponent(
           `❌ El pasajero canceló su viaje.\n\n` +
           `🔖 Solicitud: ${solicitudExitosa.codigo}\n` +
-          `📍 Zona: ${uvOrigen}\n` +
-          `📱 Pasajero: ${celularPasajero}\n\n` +
+          `📍 Zona: ${uvOrigen}\n\n` +
           `Ya puedes tomar otro viaje.`
         )
-        setLinkCancelacion(`https://wa.me/${celularWA}?text=${mensaje}`)
+        setLinkCancelacion(`https://wa.me/${celularWA}?text=${msg}`)
       }
 
       setCancelado(true)
@@ -146,37 +179,63 @@ export default function SolicitudViaje() {
 
   const resetear = () => {
     clearInterval(pollingRef.current)
+    clearTimeout(timeoutRef.current)
     setSolicitudExitosa(null)
     setConductorAsignado(null)
+    setViajeCompletado(false)
+    setSinConductor(false)
     setMensaje(null)
     setUvOrigen('')
     setReferenciaOrigen('')
     setDestinoReferencia('')
     setCelularPasajero('')
-    setTipoVehiculo('moto')
     setTipoServicio('normal')
     setCancelado(false)
     setLinkCancelacion(null)
   }
 
-  // ── PANTALLA: CONDUCTOR ENCONTRADO ────────────────────────
-  if (conductorAsignado) {
+  // ── PANTALLA: VIAJE COMPLETADO ────────────────────────────
+  if (viajeCompletado) {
     return (
       <div className="app">
         <div className="header">
           <span className="header-icon">🏍️</span>
           <div className="header-texto">
             <h1>Mototaxis</h1>
-            <p>{ciudad?.replace('-', ' ') || 'Santa Cruz'}</p>
+            <p>{ciudad || 'Warnes'}</p>
           </div>
         </div>
         <div className="exito-screen">
-          <div className="exito-icon" style={{ animation: 'pop 0.4s cubic-bezier(0.175,0.885,0.32,1.275)' }}>
-            🏍️
+          <div className="exito-icon">⭐</div>
+          <h2 className="exito-titulo">¡Llegaste!</h2>
+          <p className="exito-desc">
+            Tu viaje fue completado. Gracias por usar el servicio.
+          </p>
+          <div className="exito-codigo">{solicitudExitosa?.codigo}</div>
+          <button className="btn-solicitar" onClick={resetear}>
+            Pedir otro mototaxi
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── PANTALLA: CONDUCTOR ENCONTRADO ────────────────────────
+  if (conductorAsignado && !cancelado) {
+    return (
+      <div className="app">
+        <div className="header">
+          <span className="header-icon">🏍️</span>
+          <div className="header-texto">
+            <h1>Mototaxis</h1>
+            <p>{ciudad || 'Warnes'}</p>
           </div>
+        </div>
+        <div className="exito-screen">
+          <div className="exito-icon">🏍️</div>
           <h2 className="exito-titulo">¡Conductor en camino!</h2>
           <p className="exito-desc">
-            Un conductor aceptó tu solicitud y está yendo a recogerte.
+            Un conductor aceptó tu solicitud.
           </p>
 
           <div className="conductor-info-pasajero">
@@ -198,37 +257,77 @@ export default function SolicitudViaje() {
             </div>
           </div>
 
-          <p className="exito-desc" style={{ fontSize: '0.82rem' }}>
-            El conductor te enviará su ubicación en tiempo real por WhatsApp. Mantente atento al chat.
-          </p>
+          <button className="btn-solicitar" onClick={enviarUbicacion}>
+            📍 Enviar mi ubicación al conductor
+          </button>
 
-          {!cancelado && (
-            <button
-              className="btn-cancelar-pasajero"
-              onClick={handleCancelarPasajero}
-              disabled={cancelando}
+          <button
+            className="btn-cancelar-pasajero"
+            onClick={handleCancelarPasajero}
+            disabled={cancelando}
+          >
+            {cancelando ? 'Cancelando...' : '❌ Cancelar mi viaje'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── PANTALLA: CANCELADO ───────────────────────────────────
+  if (cancelado) {
+    return (
+      <div className="app">
+        <div className="header">
+          <span className="header-icon">🏍️</span>
+          <div className="header-texto">
+            <h1>Mototaxis</h1>
+            <p>{ciudad || 'Warnes'}</p>
+          </div>
+        </div>
+        <div className="exito-screen">
+          <div className="exito-icon">❌</div>
+          <h2 className="exito-titulo">Viaje cancelado</h2>
+          {linkCancelacion && (
+            <a
+            
+              href={linkCancelacion}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-whatsapp"
+              style={{ textAlign: 'center', textDecoration: 'none', display: 'block', width: '100%' }}
             >
-              {cancelando ? 'Cancelando...' : '❌ Cancelar mi viaje'}
-            </button>
+              📲 Avisar al conductor por WhatsApp
+            </a>
           )}
+          <button className="btn-nuevo" onClick={resetear}>Volver al inicio</button>
+        </div>
+      </div>
+    )
+  }
 
-          {cancelado && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
-              <div className="mensaje error">Viaje cancelado.</div>
-              {linkCancelacion && (
-                <a
-                  href={linkCancelacion}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn-whatsapp"
-                  style={{ textAlign: 'center', textDecoration: 'none', display: 'block' }}
-                >
-                  📲 Avisar al conductor por WhatsApp
-                </a>
-              )}
-              <button className="btn-nuevo" onClick={resetear}>Volver al inicio</button>
-            </div>
-          )}
+  // ── PANTALLA: SIN CONDUCTOR ───────────────────────────────
+  if (sinConductor) {
+    return (
+      <div className="app">
+        <div className="header">
+          <span className="header-icon">🏍️</span>
+          <div className="header-texto">
+            <h1>Mototaxis</h1>
+            <p>{ciudad || 'Warnes'}</p>
+          </div>
+        </div>
+        <div className="exito-screen">
+          <div className="exito-icon">😕</div>
+          <h2 className="exito-titulo">Sin conductores disponibles</h2>
+          <p className="exito-desc">
+            Todos los conductores están ocupados en este momento. Puedes intentar de nuevo.
+          </p>
+          <button className="btn-solicitar" onClick={reintentar}>
+            🔄 Volver a intentar
+          </button>
+          <button className="btn-nuevo" onClick={resetear}>
+            Cancelar y volver al inicio
+          </button>
         </div>
       </div>
     )
@@ -242,15 +341,13 @@ export default function SolicitudViaje() {
           <span className="header-icon">🏍️</span>
           <div className="header-texto">
             <h1>Mototaxis</h1>
-            <p>{ciudad?.replace('-', ' ') || 'Santa Cruz'}</p>
+            <p>{ciudad || 'Warnes'}</p>
           </div>
         </div>
         <div className="exito-screen">
           <div className="exito-icon">✅</div>
           <h2 className="exito-titulo">¡Solicitud enviada!</h2>
-          <p className="exito-desc">
-            Buscando conductor disponible en tu zona...
-          </p>
+          <p className="exito-desc">Buscando conductor en tu zona...</p>
           <div className="exito-codigo">{solicitudExitosa.codigo}</div>
 
           <div className="buscando-indicator">
@@ -260,12 +357,8 @@ export default function SolicitudViaje() {
           </div>
 
           <p className="exito-desc" style={{ fontSize: '0.8rem' }}>
-            Cuando un conductor acepte, esta pantalla se actualizará automáticamente.
+            Esta pantalla se actualiza automáticamente cuando un conductor acepte.
           </p>
-
-          <button className="btn-whatsapp" onClick={abrirWhatsApp}>
-            📍 Compartir mi ubicación por WhatsApp
-          </button>
 
           {!cancelado && (
             <button
@@ -275,28 +368,6 @@ export default function SolicitudViaje() {
             >
               {cancelando ? 'Cancelando...' : '❌ Cancelar mi viaje'}
             </button>
-          )}
-
-          {cancelado && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
-              <div className="mensaje error">Viaje cancelado.</div>
-              {linkCancelacion && (
-                <a
-                  href={linkCancelacion}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn-whatsapp"
-                  style={{ textAlign: 'center', textDecoration: 'none', display: 'block' }}
-                >
-                  📲 Avisar al conductor por WhatsApp
-                </a>
-              )}
-              <button className="btn-nuevo" onClick={resetear}>Volver al inicio</button>
-            </div>
-          )}
-
-          {!cancelado && (
-            <button className="btn-nuevo" onClick={resetear}>Nueva solicitud</button>
           )}
         </div>
       </div>
@@ -310,7 +381,7 @@ export default function SolicitudViaje() {
         <span className="header-icon">🏍️</span>
         <div className="header-texto">
           <h1>Pedir Mototaxi</h1>
-          <p>{ciudad?.replace('-', ' ') || 'Santa Cruz'} · Bs. 4</p>
+          <p>{ciudad || 'Warnes'} · Bs. 4</p>
         </div>
       </div>
 
@@ -337,14 +408,14 @@ export default function SolicitudViaje() {
           <input
             className="input"
             type="text"
-            placeholder="Ej: Frente a la farmacia, frente a una casa blanca"
+            placeholder="Ej: Frente a la farmacia Chávez"
             value={referenciaOrigen}
             onChange={e => setReferenciaOrigen(e.target.value)}
           />
         </div>
 
         <div className="campo">
-          <label>¿A dónde vas? <span style={{ color: '#555', fontWeight: 400 }}>(opcional)</span></label>
+          <label>¿A dónde vas?</label>
           <input
             className="input"
             type="text"
@@ -355,18 +426,6 @@ export default function SolicitudViaje() {
         </div>
 
         <hr className="divider" />
-
-        <div className="campo">
-          <label>Tipo de vehículo</label>
-          <div className="toggle-group">
-            <button className={`toggle-btn ${tipoVehiculo === 'moto' ? 'activo' : ''}`} onClick={() => setTipoVehiculo('moto')}>
-              <span className="icon">🏍️</span>Moto
-            </button>
-            <button className={`toggle-btn ${tipoVehiculo === 'torito' ? 'activo' : ''}`} onClick={() => setTipoVehiculo('torito')}>
-              <span className="icon">🛺</span>Torito
-            </button>
-          </div>
-        </div>
 
         <div className="campo">
           <label>Tipo de servicio</label>
@@ -384,7 +443,7 @@ export default function SolicitudViaje() {
 
         <div className="tarifa-badge">
           <span>💰</span>
-          <span>Tarifa base: <strong>Bs. {tipoServicio === 'premium' ? '5' : '4'}</strong> — Si el destino es lejano, el conductor te informará el ajuste.</span>
+          <span>Tarifa base: <strong>Bs. {tipoServicio === 'premium' ? '5' : '4'}</strong> — El conductor puede ajustar si el destino es lejano.</span>
         </div>
 
         <hr className="divider" />
@@ -406,7 +465,7 @@ export default function SolicitudViaje() {
 
         <button className="btn-solicitar" onClick={handleSolicitar} disabled={btnDeshabilitado}>
           {cargando
-            ? <><span className="spinner" />Buscando conductor...</>
+            ? <><span className="spinner" />Enviando solicitud...</>
             : segundosRestantes > 0
               ? `Espera ${segundosRestantes} seg...`
               : '🏍️ Solicitar Mototaxi'
