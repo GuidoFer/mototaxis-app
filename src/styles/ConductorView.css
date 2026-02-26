@@ -194,9 +194,9 @@ body {
   border-radius: 8px;
   color: #888;
   cursor: pointer;
-  font-size: 0.75rem;
+  font-size: 0.88rem;
   font-family: 'DM Sans', sans-serif;
-  padding: 5px 12px;
+  padding: 8px 16px;
   transition: all 0.2s;
 }
 .btn-refrescar:hover { border-color: var(--naranja); color: var(--naranja); }
@@ -469,4 +469,29 @@ body {
 .resumen-valor.verde { color: var(--verde); }
 
 /* ULTIMO REFRESH */
-.ultimo-refresh { font-size: 0.72rem; color: #555; font-weight: 500; }
+.ultimo-refresh {
+  font-size: 0.82rem;
+  color: #666;
+  font-weight: 600;
+}
+
+/* BOTÓN ACTIVAR ALARMA */
+.btn-activar-alarma {
+  background: rgba(232, 93, 4, 0.15);
+  border: 1.5px solid var(--naranja);
+  border-radius: 12px;
+  color: var(--naranja);
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 14px 16px;
+  width: 100%;
+  transition: all 0.2s;
+  animation: pulse-border 1.5s ease-in-out infinite;
+}
+.btn-activar-alarma:hover { background: rgba(232, 93, 4, 0.25); }
+@keyframes pulse-border {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(232, 93, 4, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(232, 93, 4, 0); }
+}
