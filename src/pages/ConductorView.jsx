@@ -123,16 +123,14 @@ export default function ConductorView() {
       `🏍️ ¡Tu mototaxi está en camino!\n\n` +
       `👤 Conductor: ${conductor.nombre}\n` +
       `🦺 Chaleco: ${conductor.color_chaleco}\n` +
-      `🏍️ Vehículo: ${conductor.tipo_vehiculo}\n` +
       `🔖 Solicitud: ${viaje.codigo}\n\n` +
       (tarifaSubio
         ? `⚠️ AVISO DE TARIFA:\n` +
           `La tarifa base era Bs. ${tarifaBase}, pero por las condiciones del viaje la tarifa será Bs. ${tarifaCobrar}.\n` +
-          `Si no estás de acuerdo puedes cancelar tu viaje.\n\n`
+          `Si no estás de acuerdo puedes cancelar tu viaje y mandarme el mensaje por whatsapp.\n\n`
         : '') +
       `💰 Tarifa: Bs. ${tarifaCobrar}\n\n` +
-      `📍 Ahora voy a compartirte mi ubicación en tiempo real.\n` +
-      `➡️ Abre este chat → toca el clip 📎 → Ubicación → Compartir ubicación en tiempo real.`
+      `📍 Si estas de acuerdo voy a compartirte mi ubicación en tiempo real.\n`
     )
     window.open(`https://wa.me/${celularWA}?text=${mensaje}`, '_blank')
   }
@@ -291,7 +289,7 @@ export default function ConductorView() {
     const celular = String(viajeAsignado.celular_pasajero).replace(/\D/g, '')
     const celularWA = celular.startsWith('591') ? celular : `591${celular}`
     const mensaje = encodeURIComponent(
-      `❌ Lo sentimos, el conductor no pudo tomar tu viaje.\n\n` +
+      `❌ Lo sentimos, el conductor cancelo tu viaje.\n\n` +
       `🔖 Solicitud: ${viajeAsignado.codigo}\n\n` +
       `Por favor vuelve a solicitar un mototaxi desde la app.`
     )
