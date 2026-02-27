@@ -118,21 +118,26 @@ export default function ConductorView() {
     const tarifaBase = viaje.tarifa_base || 4
     const tarifaCobrar = parseFloat(tarifaFinal) || tarifaBase
     const tarifaSubio = tarifaCobrar > tarifaBase
+    const linkCancelacion = `https://mototaxis-app.vercel.app/cancelar/${viaje.codigo}`
 
-    const mensaje = encodeURIComponent(
-      `🏍️ ¡Tu mototaxi está en camino!\n\n` +
-      `👤 Conductor: ${conductor.nombre}\n` +
-      `🦺 Chaleco: ${conductor.color_chaleco}\n` +
-      `🔖 Solicitud: ${viaje.codigo}\n\n` +
-      (tarifaSubio
-        ? `⚠️ AVISO DE TARIFA:\n` +
-          `La tarifa base era Bs. ${tarifaBase}, pero por las condiciones del viaje la tarifa será Bs. ${tarifaCobrar}.\n` +
-          `Si no estás de acuerdo puedes cancelar tu viaje y mandarme el mensaje por whatsapp.\n\n`
-        : '') +
-      `💰 Tarifa: Bs. ${tarifaCobrar}\n\n` +
-      `📍 Si estas de acuerdo voy a compartirte mi ubicación en tiempo real.\n`
-    )
-    window.open(`https://wa.me/${celularWA}?text=${mensaje}`, '_blank')
+    const msg = tarifaSubio
+      ? (
+        `🏍️ ¡Voy a recogerte!\n` +
+        `👤 ${conductor.nombre} — Chaleco ${conductor.color_chaleco}\n\n` +
+        `⚠️ Tarifa: Bs. ${tarifaCobrar} (ajustada por distancia)\n\n` +
+        `Responde SI ✅ y comparte tu ubicación en tiempo real.\n` +
+        `Responde NO ❌ y cancelo el viaje.\n\n` +
+        `❌ Cancelar en cualquier momento: ${linkCancelacion}`
+      )
+      : (
+        `🏍️ ¡Voy a recogerte!\n` +
+        `👤 ${conductor.nombre} — Chaleco ${conductor.color_chaleco}\n` +
+        `💰 Tarifa: Bs. ${tarifaCobrar}\n\n` +
+        `Comparte tu ubicación en tiempo real aquí 📍\n\n` +
+        `❌ Cancelar viaje en cualquier momento: ${linkCancelacion}`
+      )
+
+    window.open(`https://wa.me/${celularWA}?text=${encodeURIComponent(msg)}`, '_blank')
   }
 
   // ── CARGAR CONDUCTOR ──────────────────────────────────────
