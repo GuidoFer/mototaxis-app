@@ -23,13 +23,46 @@ export default function SolicitudViaje() {
   const [conductorAsignado, setConductorAsignado] = useState(null)
   const [viajeCompletado, setViajeCompletado] = useState(false)
   const [sinConductor, setSinConductor] = useState(false)
-  const [conductorCancelo, setConductorCancelo] = useState(false) // ← agregado
+  const [conductorCancelo, setConductorCancelo] = useState(false)
 
   const [segundosRestantes, setSegundosRestantes] = useState(0)
 
   const timerRef = useRef(null)
   const pollingRef = useRef(null)
   const timeoutRef = useRef(null)
+
+  // ── FIX 3: Recuperar solicitud de sessionStorage al montar ─
+  useEffect(() => {
+    const guardado = sessionStorage.getItem('solicitudActiva')
+    if (guardado) {
+      try {
+        const data = JSON.parse(guardado)
+        setSolicitudExitosa(data.solicitud)
+        setUvOrigen(data.uvOrigen || '')
+        setReferenciaOrigen(data.referenciaOrigen || '')
+        setDestinoReferencia(data.destinoReferencia || '')
+        setCelularPasajero(data.celularPasajero || '')
+      } catch (e) {}
+    }
+  }, [])
+
+  // ── FIX 5: Interceptar botón atrás del celular ────────────
+  useEffect(() => {
+    window.history.pushState(null, '', window.location.href)
+
+    const handlePopState = () => {
+      const confirmar = window.confirm('¿Deseas salir de la app?')
+      if (confirmar) {
+        sessionStorage.removeItem('solicitudActiva')
+        window.history.back()
+      } else {
+        window.history.pushState(null, '', window.location.href)
+      }
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
 
   // Cargar UVs
   useEffect(() => {
@@ -46,12 +79,12 @@ export default function SolicitudViaje() {
     return () => clearTimeout(timerRef.current)
   }, [segundosRestantes])
 
-  // Polling
+  // ── FIX 2: Polling siempre activo mientras haya solicitud ──
   useEffect(() => {
-    if (!solicitudExitosa || conductorAsignado || viajeCompletado) return
+    if (!solicitudExitosa || conductorAsignado || viajeCompletado || conductorCancelo) return
 
+    // Timeout 1 minuto — muestra aviso pero NO detiene el polling
     timeoutRef.current = setTimeout(() => {
-      clearInterval(pollingRef.current)
       setSinConductor(true)
     }, TIMEOUT_SIN_CONDUCTOR)
 
@@ -72,12 +105,21 @@ export default function SolicitudViaje() {
           clearTimeout(timeoutRef.current)
           setViajeCompletado(true)
           setConductorAsignado(null)
+          sessionStorage.removeItem('solicitudActiva')
         }
 
         if (viaje.estado === 'cancelado_conductor') {
           clearInterval(pollingRef.current)
           clearTimeout(timeoutRef.current)
           setConductorCancelo(true)
+          sessionStorage.removeItem('solicitudActiva')
+        }
+
+        if (viaje.estado === 'cancelado_pasajero') {
+          clearInterval(pollingRef.current)
+          clearTimeout(timeoutRef.current)
+          sessionStorage.removeItem('solicitudActiva')
+          resetear()
         }
 
       } catch (e) {
@@ -89,7 +131,7 @@ export default function SolicitudViaje() {
       clearInterval(pollingRef.current)
       clearTimeout(timeoutRef.current)
     }
-  }, [solicitudExitosa, conductorAsignado, viajeCompletado])
+  }, [solicitudExitosa, conductorAsignado, viajeCompletado, conductorCancelo])
 
   const btnDeshabilitado = cargando || segundosRestantes > 0
 
@@ -113,6 +155,16 @@ export default function SolicitudViaje() {
       setSolicitudExitosa(resultado)
       setSinConductor(false)
       setSegundosRestantes(30)
+
+      // FIX 3: Guardar en sessionStorage
+      sessionStorage.setItem('solicitudActiva', JSON.stringify({
+        solicitud: resultado,
+        uvOrigen,
+        referenciaOrigen,
+        destinoReferencia,
+        celularPasajero: celularPasajero.trim(),
+      }))
+
     } catch (err) {
       setMensaje({ tipo: 'error', texto: err.message })
     } finally {
@@ -120,35 +172,26 @@ export default function SolicitudViaje() {
     }
   }
 
-  // ← REEMPLAZADA
+  // FIX 4: Solo abre WhatsApp al conductor sin mensaje pre-armado
   const irAWhatsApp = () => {
     const celular = String(conductorAsignado.celular).replace(/\D/g, '')
     const celularWA = celular.startsWith('591') ? celular : `591${celular}`
-    const linkCancelacion = `https://mototaxis-app.vercel.app/cancelar/${solicitudExitosa.codigo}`
-    const msg = encodeURIComponent(
-      `Hola, soy el pasajero de la solicitud ${solicitudExitosa.codigo} 👋\n\n` +
-      `📍 Estoy en: ${uvOrigen} — ${referenciaOrigen}\n` +
-      `🏁 Destino: ${destinoReferencia}\n\n` +
-      `Ahora te comparto mi ubicación en tiempo real.\n\n` +
-      `❌ Si necesitas cancelar: ${linkCancelacion}`
-    )
-    window.open(`https://wa.me/${celularWA}?text=${msg}`, '_blank')
+    window.open(`https://wa.me/${celularWA}`, '_blank')
   }
 
   const reintentar = () => {
     setSinConductor(false)
-    setConductorAsignado(null)
   }
 
-  // ← MODIFICADO
   const resetear = () => {
     clearInterval(pollingRef.current)
     clearTimeout(timeoutRef.current)
+    sessionStorage.removeItem('solicitudActiva')
     setSolicitudExitosa(null)
     setConductorAsignado(null)
     setViajeCompletado(false)
     setSinConductor(false)
-    setConductorCancelo(false) // ← agregado
+    setConductorCancelo(false)
     setMensaje(null)
     setUvOrigen('')
     setReferenciaOrigen('')
@@ -181,6 +224,31 @@ export default function SolicitudViaje() {
     )
   }
 
+  // ── PANTALLA: CONDUCTOR CANCELÓ ───────────────────────────
+  if (conductorCancelo) {
+    return (
+      <div className="app">
+        <div className="header">
+          <span className="header-icon">🏍️</span>
+          <div className="header-texto">
+            <h1>Mototaxis</h1>
+            <p>{ciudad || 'Warnes'}</p>
+          </div>
+        </div>
+        <div className="exito-screen">
+          <div className="exito-icon">😔</div>
+          <h2 className="exito-titulo">El conductor canceló</h2>
+          <p className="exito-desc">
+            El conductor no pudo completar el viaje. Puedes solicitar uno nuevo.
+          </p>
+          <button className="btn-solicitar" onClick={resetear}>
+            🔄 Pedir otro mototaxi
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   // ── PANTALLA: CONDUCTOR ENCONTRADO ────────────────────────
   if (conductorAsignado) {
     return (
@@ -196,7 +264,7 @@ export default function SolicitudViaje() {
           <div className="exito-icon">🏍️</div>
           <h2 className="exito-titulo">¡Un mototaxista aceptó tu viaje!</h2>
           <p className="exito-desc">
-            Te llegará un mensaje a tu WhatsApp con los detalles.
+            Te llegará un mensaje a tu WhatsApp con los detalles y la tarifa.
           </p>
 
           <div className="conductor-info-pasajero">
@@ -223,67 +291,14 @@ export default function SolicitudViaje() {
           </button>
 
           <p className="exito-desc" style={{ fontSize: '0.78rem' }}>
-            ¿Necesitas cancelar? Usa el link que te enviará el conductor en el mensaje.
+            ¿Necesitas cancelar? Usa el link que te enviará el conductor en el mensaje de WhatsApp.
           </p>
         </div>
       </div>
     )
   }
 
-  // ── PANTALLA: CONDUCTOR CANCELÓ ───────────────────────────
-  if (conductorCancelo) {
-    return (
-      <div className="app">
-        <div className="header">
-          <span className="header-icon">🏍️</span>
-          <div className="header-texto">
-            <h1>Mototaxis</h1>
-            <p>{ciudad || 'Warnes'}</p>
-          </div>
-        </div>
-        <div className="exito-screen">
-          <div className="exito-icon">😔</div>
-          <h2 className="exito-titulo">El conductor canceló</h2>
-          <p className="exito-desc">
-            El conductor no pudo completar el viaje. Puedes solicitar uno nuevo.
-          </p>
-          <button className="btn-solicitar" onClick={resetear}>
-            🔄 Pedir otro mototaxi
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  // ── PANTALLA: SIN CONDUCTOR ───────────────────────────────
-  if (sinConductor) {
-    return (
-      <div className="app">
-        <div className="header">
-          <span className="header-icon">🏍️</span>
-          <div className="header-texto">
-            <h1>Mototaxis</h1>
-            <p>{ciudad || 'Warnes'}</p>
-          </div>
-        </div>
-        <div className="exito-screen">
-          <div className="exito-icon">😕</div>
-          <h2 className="exito-titulo">Sin conductores disponibles</h2>
-          <p className="exito-desc">
-            Todos los conductores están ocupados. Puedes intentar de nuevo.
-          </p>
-          <button className="btn-solicitar" onClick={reintentar}>
-            🔄 Volver a intentar
-          </button>
-          <button className="btn-nuevo" onClick={resetear}>
-            Cancelar y volver al inicio
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  // ── PANTALLA: ESPERANDO CONDUCTOR ─────────────────────────
+  // ── PANTALLA: ESPERANDO / SIN CONDUCTOR ───────────────────
   if (solicitudExitosa) {
     return (
       <div className="app">
@@ -295,18 +310,43 @@ export default function SolicitudViaje() {
           </div>
         </div>
         <div className="exito-screen">
-          <div className="exito-icon">✅</div>
-          <h2 className="exito-titulo">¡Solicitud enviada!</h2>
-          <p className="exito-desc">Buscando conductor en tu zona...</p>
-          <div className="exito-codigo">{solicitudExitosa.codigo}</div>
-          <div className="buscando-indicator">
-            <span className="buscando-dot" />
-            <span className="buscando-dot" />
-            <span className="buscando-dot" />
-          </div>
-          <p className="exito-desc" style={{ fontSize: '0.8rem' }}>
-            Esta pantalla se actualiza automáticamente.
-          </p>
+
+          {sinConductor ? (
+            <>
+              <div className="exito-icon">😕</div>
+              <h2 className="exito-titulo">Sin conductores disponibles</h2>
+              <p className="exito-desc">
+                Todos están ocupados. Seguimos buscando automáticamente.
+              </p>
+              <div className="buscando-indicator">
+                <span className="buscando-dot" />
+                <span className="buscando-dot" />
+                <span className="buscando-dot" />
+              </div>
+              <button className="btn-nuevo" onClick={resetear}>
+                Cancelar y volver al inicio
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="exito-icon">✅</div>
+              <h2 className="exito-titulo">¡Solicitud enviada!</h2>
+              <p className="exito-desc">Buscando conductor en tu zona...</p>
+              <div className="exito-codigo">{solicitudExitosa.codigo}</div>
+              <div className="buscando-indicator">
+                <span className="buscando-dot" />
+                <span className="buscando-dot" />
+                <span className="buscando-dot" />
+              </div>
+              <p className="exito-desc" style={{ fontSize: '0.8rem' }}>
+                Esta pantalla se actualiza automáticamente.
+              </p>
+              <button className="btn-nuevo" onClick={resetear}>
+                Cancelar solicitud
+              </button>
+            </>
+          )}
+
         </div>
       </div>
     )
@@ -324,6 +364,7 @@ export default function SolicitudViaje() {
       </div>
 
       <div className="form">
+
         <div className="campo">
           <label>¿Dónde estás?</label>
           {cargandoUvs ? (
@@ -385,6 +426,7 @@ export default function SolicitudViaje() {
 
         <hr className="divider" />
 
+        {/* FIX 1: Campo celular con confirmación */}
         <div className="campo">
           <label>Tu número de celular</label>
           <input
@@ -394,6 +436,11 @@ export default function SolicitudViaje() {
             value={celularPasajero}
             onChange={e => setCelularPasajero(e.target.value)}
           />
+          {celularPasajero.trim().length >= 7 && (
+            <p className="celular-confirmacion">
+              ¿Tu número es <strong>{celularPasajero.trim()}</strong>? Verifica antes de continuar.
+            </p>
+          )}
         </div>
 
         {mensaje && (
@@ -412,6 +459,7 @@ export default function SolicitudViaje() {
         {segundosRestantes > 0 && (
           <p className="countdown">Puedes volver a solicitar en <span>{segundosRestantes}s</span></p>
         )}
+
       </div>
     </div>
   )
