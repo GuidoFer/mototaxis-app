@@ -16,7 +16,7 @@ function App() {
         <Route path="/cancelar/:codigo" element={<CancelarViaje />} />
 
         {/* Conductor */}
-        <Route path="/moto/conductor/:id" element={<ConductorView />} />
+        <Route path="/moto/conductor" element={<ConductorView />} />
 
         {/* Inicio */}
         <Route path="/" element={
@@ -24,7 +24,7 @@ function App() {
             <h2>🏍️ Mototaxis API — OK</h2>
             <ul>
               <li><a href="/moto/warnes">/moto/warnes — Solicitar viaje</a></li>
-              <li><a href="/moto/conductor/MOT-001">/moto/conductor/MOT-001 — Panel conductor</a></li>
+              <li><a href="/moto/conductor">/moto/conductor — Panel conductor</a></li>
             </ul>
           </div>
         } />

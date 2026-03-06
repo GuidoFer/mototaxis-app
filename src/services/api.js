@@ -106,3 +106,6 @@ export const completarViaje = (codigo, tarifaFinal, sheetIdConductor) =>
     tarifa_final: tarifaFinal,
     sheet_id_conductor: sheetIdConductor
   });
+
+export const verificarConductor = (celular, pin) =>
+  apiGet({ get: 'verificar_conductor', celular, pin })

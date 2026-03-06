@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useParams } from 'react-router-dom'
 import {
-  getConductor,
+  verificarConductor,
   getViajesHoy,
   actualizarEstadoConductor,
   aceptarSolicitud,
@@ -12,9 +11,17 @@ import '../styles/ConductorView.css'
 
 const INTERVALO_BASE = 15000
 const INTERVALO_ACTIVO = 10000
+const SESION_DURACION = 12 * 60 * 60 * 1000 // 12 horas
 
 export default function ConductorView() {
-  const { id: conductorId } = useParams()
+
+  // ── LOGIN ─────────────────────────────────────────────────
+  const [celularInput, setCelularInput] = useState('')
+  const [pinInput, setPinInput] = useState('')
+  const [verPin, setVerPin] = useState(false)
+  const [loginCargando, setLoginCargando] = useState(false)
+  const [loginError, setLoginError] = useState(null)
+  const [sesionVerificada, setSesionVerificada] = useState(false)
 
   const [conductor, setConductor] = useState(null)
   const [cargando, setCargando] = useState(true)
@@ -27,14 +34,11 @@ export default function ConductorView() {
 
   const [viajeAsignado, setViajeAsignado] = useState(null)
   const [tarifaFinal, setTarifaFinal] = useState('4')
-  // FIX 1: rastrear si el conductor ya modificó la tarifa manualmente
   const tarifaModificadaRef = useRef(false)
 
   const [actualizando, setActualizando] = useState(false)
   const [toast, setToast] = useState(null)
   const [resumenCompletado, setResumenCompletado] = useState(null)
-
-  // FIX 3: estado de audio activado
   const [audioActivado, setAudioActivado] = useState(false)
 
   const toastTimeoutRef = useRef(null)
@@ -42,6 +46,56 @@ export default function ConductorView() {
   const alarmaIntervalRef = useRef(null)
   const viajesAnterioresRef = useRef([])
   const intervaloRef = useRef(null)
+
+  // ── VERIFICAR SESIÓN AL MONTAR ────────────────────────────
+  useEffect(() => {
+    try {
+      const sesionGuardada = localStorage.getItem('conductorSesion')
+      if (sesionGuardada) {
+        const sesion = JSON.parse(sesionGuardada)
+        if (sesion.expira > Date.now()) {
+          setConductor(sesion.conductor)
+          setSesionVerificada(true)
+          setCargando(false)
+          return
+        } else {
+          localStorage.removeItem('conductorSesion')
+        }
+      }
+    } catch (e) {}
+    setCargando(false)
+  }, [])
+
+  // ── LOGIN ─────────────────────────────────────────────────
+  const handleLogin = async () => {
+    setLoginError(null)
+    if (!celularInput.trim()) return setLoginError('Ingresa tu número de celular.')
+    if (!pinInput.trim()) return setLoginError('Ingresa tu PIN.')
+
+    setLoginCargando(true)
+    try {
+      const data = await verificarConductor(celularInput.trim(), pinInput.trim())
+      const sesion = {
+        conductor: data,
+        expira: Date.now() + SESION_DURACION,
+      }
+      localStorage.setItem('conductorSesion', JSON.stringify(sesion))
+      setConductor(data)
+      setSesionVerificada(true)
+    } catch (err) {
+      setLoginError(err.message)
+    } finally {
+      setLoginCargando(false)
+    }
+  }
+
+  const cerrarSesion = () => {
+    localStorage.removeItem('conductorSesion')
+    setConductor(null)
+    setSesionVerificada(false)
+    setCelularInput('')
+    setPinInput('')
+  }
 
   // ── TOAST ─────────────────────────────────────────────────
   const mostrarToast = (tipo, texto) => {
@@ -52,7 +106,7 @@ export default function ConductorView() {
 
   // ── ALARMA ────────────────────────────────────────────────
   const sonarAlarma = () => {
-    if (!audioActivado) return // FIX 3: solo suena si el usuario activó el audio
+    if (!audioActivado) return
     if (navigator.vibrate) navigator.vibrate([500, 300, 500, 300, 500])
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)()
@@ -93,7 +147,6 @@ export default function ConductorView() {
     if (audioCtxRef.current) { audioCtxRef.current.close(); audioCtxRef.current = null }
   }
 
-  // FIX 3: activar audio desde interacción del usuario
   const activarAudio = () => {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)()
@@ -111,7 +164,6 @@ export default function ConductorView() {
   }
 
   // ── WHATSAPP ──────────────────────────────────────────────
-  // FIX 2: mensaje enfatiza tarifa si subió
   const avisarPasajero = (viaje) => {
     const celular = String(viaje.celular_pasajero).replace(/\D/g, '')
     const celularWA = celular.startsWith('591') ? celular : `591${celular}`
@@ -123,30 +175,23 @@ export default function ConductorView() {
     const msg = tarifaSubio
       ? (
         `🏍️ ¡Voy a recogerte!\n` +
-        `👤 ${conductor.nombre} — Chaleco ${conductor.color_chaleco}\n\n` +
-        `⚠️ Tarifa: Bs. ${tarifaCobrar} (ajustada por distancia)\n\n` +
-        `Responde SI ✅ y comparte tu ubicación en tiempo real.\n` +
-        `Responde NO ❌ y cancelo el viaje.\n\n` +
-        `❌ Cancelar en cualquier momento: ${linkCancelacion}`
+        `🔖 Solicitud: ${viaje.codigo} — Chaleco ${conductor.color_chaleco}\n\n` +
+        `⚠️ TARIFA: Bs. ${tarifaCobrar} (ajustada por distancia)\n\n` +
+        `SI ✅ estas de acuerdo con la tarifa comparte tu ubicación en tiempo real 📎\n` +
+        `NO ❌ estas de acuerdo con la tarifa cancela tu viaje en el link abajo 👇\n\n` +
+        `❌ Cancelar viaje en cualquier momento: ${linkCancelacion}\n\n` +
+        `🤝 ¿NEGOCIAR Tarifa? Envía tu oferta por este chat. Recuerda Tarifa mínima Bs. 4`
       )
       : (
         `🏍️ ¡Voy a recogerte!\n` +
-        `👤 ${conductor.nombre} — Chaleco ${conductor.color_chaleco}\n` +
-        `💰 Tarifa: Bs. ${tarifaCobrar}\n\n` +
-        `Comparte tu ubicación en tiempo real aquí 📍\n\n` +
-        `❌ Cancelar viaje en cualquier momento: ${linkCancelacion}`
+        `🔖 Solicitud: ${viaje.codigo} — Chaleco ${conductor.color_chaleco}\n` +
+        `💰 TARIFA: Bs. ${tarifaCobrar}\n\n` +
+        `Comparte tu ubicación en tiempo real aquí 📎\n\n` +
+        `❌ Cancelar en cualquier momento: ${linkCancelacion}`
       )
 
     window.open(`https://wa.me/${celularWA}?text=${encodeURIComponent(msg)}`, '_blank')
   }
-
-  // ── CARGAR CONDUCTOR ──────────────────────────────────────
-  useEffect(() => {
-    getConductor(conductorId)
-      .then(data => setConductor(data))
-      .catch(err => setError(err.message))
-      .finally(() => setCargando(false))
-  }, [conductorId])
 
   // ── CARGAR VIAJES ─────────────────────────────────────────
   const cargarViajes = useCallback(async () => {
@@ -163,11 +208,10 @@ export default function ConductorView() {
       )
 
       const miViaje = todos.find(v =>
-        v.conductor_id === conductorId &&
+        v.conductor_id === conductor.id &&
         ['asignado', 'en_camino'].includes(v.estado)
       )
 
-      // Detectar solicitud nueva
       const codigosAnteriores = viajesAnterioresRef.current.map(v => v.codigo)
       const hayNueva = pendientes.some(v => !codigosAnteriores.includes(v.codigo))
       if (hayNueva && pendientes.length > 0) {
@@ -179,7 +223,6 @@ export default function ConductorView() {
       viajesAnterioresRef.current = pendientes
       setViajes(pendientes)
 
-      // FIX 1: solo actualizar tarifa si el conductor NO la modificó manualmente
       if (miViaje) {
         setViajeAsignado(miViaje)
         if (!tarifaModificadaRef.current) {
@@ -187,7 +230,7 @@ export default function ConductorView() {
         }
       } else {
         setViajeAsignado(null)
-        tarifaModificadaRef.current = false // resetear al terminar viaje
+        tarifaModificadaRef.current = false
       }
 
       setUltimoRefresh(new Date())
@@ -197,18 +240,18 @@ export default function ConductorView() {
     } finally {
       setCargandoViajes(false)
     }
-  }, [conductor, conductorId, viajesIgnorados, audioActivado])
+  }, [conductor, viajesIgnorados, audioActivado])
 
   // ── AUTO REFRESH ──────────────────────────────────────────
   useEffect(() => {
-    if (!conductor) return
+    if (!conductor || !sesionVerificada) return
     cargarViajes()
     const intervalo = viajes.length > 0 ? INTERVALO_ACTIVO : INTERVALO_BASE
     intervaloRef.current = setInterval(() => {
       if (!viajeAsignado) cargarViajes()
     }, intervalo)
     return () => clearInterval(intervaloRef.current)
-  }, [conductor, cargarViajes, viajeAsignado, viajes.length])
+  }, [conductor, sesionVerificada, cargarViajes, viajeAsignado, viajes.length])
 
   // ── CLEANUP ───────────────────────────────────────────────
   useEffect(() => {
@@ -223,8 +266,12 @@ export default function ConductorView() {
     if (actualizando) return
     setActualizando(true)
     try {
-      await actualizarEstadoConductor(conductorId, conductor.sheet_id, nuevoEstado)
+      await actualizarEstadoConductor(conductor.id, conductor.sheet_id, nuevoEstado)
       setConductor(prev => ({ ...prev, estado: nuevoEstado }))
+      // Actualizar sesión en localStorage
+      const sesion = JSON.parse(localStorage.getItem('conductorSesion'))
+      sesion.conductor.estado = nuevoEstado
+      localStorage.setItem('conductorSesion', JSON.stringify(sesion))
       mostrarToast('exito', `Estado actualizado: ${nuevoEstado}`)
     } catch (err) {
       mostrarToast('error', err.message)
@@ -239,10 +286,10 @@ export default function ConductorView() {
     detenerAlarma()
     setActualizando(true)
     try {
-      await aceptarSolicitud(viaje.codigo, conductorId, conductor.asociacion_id)
-      await actualizarEstadoConductor(conductorId, conductor.sheet_id, 'ocupado')
+      await aceptarSolicitud(viaje.codigo, conductor.id, conductor.asociacion_id)
+      await actualizarEstadoConductor(conductor.id, conductor.sheet_id, 'ocupado')
       setConductor(prev => ({ ...prev, estado: 'ocupado' }))
-      setViajeAsignado({ ...viaje, conductor_id: conductorId, estado: 'asignado' })
+      setViajeAsignado({ ...viaje, conductor_id: conductor.id, estado: 'asignado' })
       tarifaModificadaRef.current = false
       setTarifaFinal(String(viaje.tarifa_base || 4))
       setViajes([])
@@ -294,7 +341,7 @@ export default function ConductorView() {
     const celular = String(viajeAsignado.celular_pasajero).replace(/\D/g, '')
     const celularWA = celular.startsWith('591') ? celular : `591${celular}`
     const mensaje = encodeURIComponent(
-      `❌ Lo sentimos, el conductor cancelo tu viaje.\n\n` +
+      `❌ Lo sentimos, el conductor no pudo tomar tu viaje.\n\n` +
       `🔖 Solicitud: ${viajeAsignado.codigo}\n\n` +
       `Por favor vuelve a solicitar un mototaxi desde la app.`
     )
@@ -303,7 +350,7 @@ export default function ConductorView() {
     setActualizando(true)
     try {
       await cancelarSolicitud(viajeAsignado.codigo, 'conductor')
-      await actualizarEstadoConductor(conductorId, conductor.sheet_id, 'disponible')
+      await actualizarEstadoConductor(conductor.id, conductor.sheet_id, 'disponible')
       setConductor(prev => ({ ...prev, estado: 'disponible' }))
       tarifaModificadaRef.current = false
       setViajeAsignado(null)
@@ -328,13 +375,73 @@ export default function ConductorView() {
     )
   }
 
-  if (error) {
+  // ── PANTALLA LOGIN ────────────────────────────────────────
+  if (!sesionVerificada) {
     return (
       <div className="conductor-app">
-        <div className="error-screen">
-          <span style={{ fontSize: '2.5rem' }}>⚠️</span>
-          <p>{error}</p>
-          <p style={{ color: '#666', fontSize: '0.8rem' }}>Verifica tu ID de conductor.</p>
+        <div className="conductor-header">
+          <div className="conductor-header-left">
+            <span className="conductor-header-icon">🏍️</span>
+            <div>
+              <h1>Panel Conductor</h1>
+              <p>Ingresa tus credenciales</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="conductor-body">
+          <div className="card">
+            <p className="card-titulo">Acceso al panel</p>
+
+            <div className="campo-login">
+              <label>Número de celular</label>
+              <input
+                className="input-login"
+                type="tel"
+                placeholder="Ej: 60605127"
+                value={celularInput}
+                onChange={e => setCelularInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleLogin()}
+              />
+            </div>
+
+            <div className="campo-login">
+              <label>PIN</label>
+              <div className="input-pin-wrap">
+                <input
+                  className="input-login"
+                  type={verPin ? 'text' : 'password'}
+                  placeholder="4 dígitos"
+                  maxLength={4}
+                  value={pinInput}
+                  onChange={e => setPinInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleLogin()}
+                />
+                <button
+                  className="btn-ver-pin"
+                  onClick={() => setVerPin(v => !v)}
+                  type="button"
+                >
+                  {verPin ? '🙈' : '👁️'}
+                </button>
+              </div>
+            </div>
+
+            {loginError && (
+              <div className="mensaje error">{loginError}</div>
+            )}
+
+            <button
+              className="btn-completar"
+              onClick={handleLogin}
+              disabled={loginCargando}
+            >
+              {loginCargando
+                ? <><span className="spinner-sm" />Verificando...</>
+                : '🔐 Ingresar al panel'
+              }
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -377,7 +484,7 @@ export default function ConductorView() {
     )
   }
 
-  // ── RENDER ────────────────────────────────────────────────
+  // ── RENDER PRINCIPAL ──────────────────────────────────────
   return (
     <div className="conductor-app">
 
@@ -389,9 +496,14 @@ export default function ConductorView() {
             <p>{conductor.asociacion_nombre} · {conductor.tipo_vehiculo}</p>
           </div>
         </div>
-        <span className={`estado-badge ${conductor.estado}`}>
-          {conductor.estado}
-        </span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+          <span className={`estado-badge ${conductor.estado}`}>
+            {conductor.estado}
+          </span>
+          <button className="btn-cerrar-sesion" onClick={cerrarSesion}>
+            Cerrar sesión
+          </button>
+        </div>
       </div>
 
       <div className="conductor-body">
@@ -400,7 +512,6 @@ export default function ConductorView() {
           <div className={`mensaje-toast ${toast.tipo}`}>{toast.texto}</div>
         )}
 
-        {/* FIX 3: BOTÓN ACTIVAR ALARMA */}
         {!audioActivado && (
           <button className="btn-activar-alarma" onClick={activarAudio}>
             🔔 Toca aquí para activar la alarma de pedidos
@@ -490,7 +601,7 @@ export default function ConductorView() {
                 min="4"
                 value={tarifaFinal}
                 onChange={e => {
-                  tarifaModificadaRef.current = true // FIX 1
+                  tarifaModificadaRef.current = true
                   setTarifaFinal(e.target.value)
                 }}
               />
@@ -572,12 +683,6 @@ export default function ConductorView() {
                         <span className="viaje-fila-texto">{viaje.destino_referencia}</span>
                       </div>
                     )}
-                    <div className="viaje-fila">
-                      <span className="viaje-fila-icon">🚗</span>
-                      <span className="viaje-fila-texto" style={{ textTransform: 'capitalize' }}>
-                        {viaje.tipo_vehiculo}
-                      </span>
-                    </div>
                   </div>
 
                   <div className="viaje-tarifa">
