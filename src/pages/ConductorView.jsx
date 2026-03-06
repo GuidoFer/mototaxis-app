@@ -174,13 +174,14 @@ export default function ConductorView() {
 
     const msg = tarifaSubio
       ? (
-        `🏍️ ¡Voy a recogerte!\n` +
-        `🔖 Solicitud: ${viaje.codigo} — Chaleco ${conductor.color_chaleco}\n\n` +
-        `⚠️ TARIFA: Bs. ${tarifaCobrar} (ajustada por distancia)\n\n` +
-        `SI ✅ estas de acuerdo con la tarifa comparte tu ubicación en tiempo real 📎\n` +
-        `NO ❌ estas de acuerdo con la tarifa cancela tu viaje en el link abajo 👇\n\n` +
-        `❌ Cancelar viaje en cualquier momento: ${linkCancelacion}\n\n` +
-        `🤝 ¿NEGOCIAR Tarifa? Envía tu oferta por este chat. Recuerda Tarifa mínima Bs. 4`
+        `🏍️ ¡ACEPTE TU SOLICITUD!\n` +
+        `🔖 ${viaje.codigo} — Tengo Chaleco ${conductor.color_chaleco}\n\n` +
+        `⚠️ TARIFA: Bs. ${tarifaCobrar} (ajustada por distancia)⚠️\n\n` +
+        `1.SI ✅ estas de acuerdo con la tarifa comparte tu ubicación en tiempo real 📎\n\n` +
+        `2.🤝 ¿NEGOCIAR Tarifa? Envía tu oferta por este chat. Recuerda Tarifa mínima Bs. 4\n\n`
+        `3.NO ❌ estas de acuerdo cancela tu viaje en el link abajo 👇\n\n` +
+        `❌ Cancelar viaje en cualquier momento: ${linkCancelacion}` 
+        
       )
       : (
         `🏍️ ¡Voy a recogerte!\n` +
