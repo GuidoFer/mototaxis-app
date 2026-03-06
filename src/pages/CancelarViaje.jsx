@@ -11,6 +11,7 @@ export default function CancelarViaje() {
   const [cargando, setCargando] = useState(true)
   const [cancelando, setCancelando] = useState(false)
   const [cancelado, setCancelado] = useState(false)
+  const [linkWhatsapp, setLinkWhatsapp] = useState(null)
   const [error, setError] = useState(null)
 
   useEffect(() => {
@@ -23,9 +24,22 @@ export default function CancelarViaje() {
   const handleCancelar = async () => {
     const confirmar = window.confirm('¿Seguro que quieres cancelar tu viaje?')
     if (!confirmar) return
+
     setCancelando(true)
     try {
       await cancelarSolicitud(codigo, 'pasajero')
+
+      // Armar link WhatsApp directo al conductor si hay celular registrado
+      if (viaje.celular_conductor) {
+        const celular = String(viaje.celular_conductor).replace(/\D/g, '')
+        const celularWA = celular.startsWith('591') ? celular : `591${celular}`
+        const msg = encodeURIComponent(
+          `❌ Cancelé el viaje ${codigo}.\n\n` +
+          `Ya puedes tomar otro viaje.`
+        )
+        setLinkWhatsapp(`https://wa.me/${celularWA}?text=${msg}`)
+      }
+
       setCancelado(true)
     } catch (err) {
       setError(err.message)
@@ -53,8 +67,18 @@ export default function CancelarViaje() {
         <>
           <div className="cancelar-icon">✅</div>
           <h2 className="cancelar-titulo">Viaje cancelado</h2>
-          <p className="cancelar-desc">Tu conductor fue notificado automáticamente.</p>
           <div className="cancelar-codigo">{codigo}</div>
+          {linkWhatsapp && (
+            <a
+              href={linkWhatsapp}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-cancelar-final"
+              style={{ textDecoration: 'none', textAlign: 'center', display: 'block', background: '#25d366' }}
+            >
+              📲 Avisar al conductor por WhatsApp
+            </a>
+          )}
         </>
       )}
 
@@ -79,7 +103,7 @@ export default function CancelarViaje() {
           <h2 className="cancelar-titulo">¿Cancelar tu viaje?</h2>
           <div className="cancelar-codigo">{codigo}</div>
           <p className="cancelar-desc">
-            Si cancelas, tu conductor será notificado automáticamente.
+            Si cancelas, tu conductor será notificado por WhatsApp.
           </p>
           <button
             className="btn-cancelar-final"
@@ -88,10 +112,7 @@ export default function CancelarViaje() {
           >
             {cancelando ? 'Cancelando...' : '❌ Sí, cancelar mi viaje'}
           </button>
-          <button
-            className="btn-volver"
-            onClick={() => navigate(-1)}
-          >
+          <button className="btn-volver" onClick={() => navigate(-1)}>
             Volver
           </button>
         </>
