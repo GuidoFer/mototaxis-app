@@ -177,10 +177,10 @@ export default function ConductorView() {
         `🏍️ ¡ACEPTE TU SOLICITUD!\n` +
         `🔖 ${viaje.codigo} — Tengo Chaleco ${conductor.color_chaleco}\n\n` +
         `⚠️ TARIFA: Bs. ${tarifaCobrar} (ajustada por distancia)⚠️\n\n` +
-        `1.SI ✅ estas de acuerdo con la tarifa comparte tu ubicación en tiempo real 📎\n\n` +
+        `1.SI ✅ ESTAS DE ACUERDO con la tarifa comparte TU UBICACION en tiempo real 📎\n\n` +
         `2.🤝 ¿NEGOCIAR Tarifa? Envía tu oferta por este chat. Recuerda Tarifa mínima Bs. 4\n\n`+
-        `3.NO ❌ estas de acuerdo cancela tu viaje en el link abajo 👇\n\n` +
-        `❌ Cancelar viaje en cualquier momento: ${linkCancelacion}` 
+        `3.NO ❌ estas de acuerdo escribe CANCELAR \n\n` +
+        `❌ ¿Necesitas cancelar despues? 👇 ${linkCancelacion}` 
         
       )
       : (
@@ -310,6 +310,12 @@ export default function ConductorView() {
   // ── COMPLETAR ─────────────────────────────────────────────
   const handleCompletar = async () => {
     if (!viajeAsignado || actualizando) return
+
+    const confirmar = window.confirm(
+      `¿Completar el viaje?\n\nTarifa cobrada: Bs. ${tarifaFinal}\n\nAsegúrate de haber recogido al pasajero antes de confirmar.`
+    )
+    if (!confirmar) return
+
     setActualizando(true)
     try {
       const tarifa = parseFloat(tarifaFinal) || 4
