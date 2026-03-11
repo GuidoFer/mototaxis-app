@@ -70,6 +70,9 @@ export const getConductor = (conductorId) =>
 export const getViaje = (codigo) =>
   apiGet({ get: 'viaje', codigo })
 
+export const getAsociacionesCercanas = (lat, lng) =>
+  apiGet({ get: 'asociaciones_cercanas', lat, lng })
+
 export const crearViaje = (datos) =>
   apiPost({ action: 'crearViaje', ...datos });
 
