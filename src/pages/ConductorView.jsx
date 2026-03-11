@@ -254,6 +254,24 @@ export default function ConductorView() {
     return () => clearInterval(intervaloRef.current)
   }, [conductor, sesionVerificada, cargarViajes, viajeAsignado, viajes.length])
 
+  useEffect(() => {
+    if (!sesionVerificada) return
+    
+    window.history.pushState(null, '', window.location.href)
+    
+    const handlePopState = () => {
+      const confirmar = window.confirm('¿Deseas cerrar sesión y salir del panel?')
+      if (confirmar) {
+        cerrarSesion()
+      } else {
+        window.history.pushState(null, '', window.location.href)
+      }
+    }
+    
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [sesionVerificada])
+
   // ── CLEANUP ───────────────────────────────────────────────
   useEffect(() => {
     return () => {
