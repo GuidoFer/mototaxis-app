@@ -112,9 +112,7 @@ export default function CancelarViaje() {
           >
             {cancelando ? 'Cancelando...' : '❌ Sí, cancelar mi viaje'}
           </button>
-          <button className="btn-volver" onClick={() => window.history.back()}>
-            Volver a WhatsApp
-          </button>
+          
         </>
       )}
 
