@@ -136,7 +136,7 @@ return ()=>clearTimeout(timerRef.current)
 
 useEffect(()=>{
 
-if(!solicitudExitosa || conductorAsignado || viajeCompletado || conductorCancelo) return
+if(!solicitudExitosa || viajeCompletado || conductorCancelo) return
 
 timeoutRef.current=setTimeout(()=>{
 

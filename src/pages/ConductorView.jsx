@@ -10,7 +10,7 @@ import {
 import '../styles/ConductorView.css'
 
 const INTERVALO_BASE = 15000
-const INTERVALO_ACTIVO = 10000
+const INTERVALO_ACTIVO = 5000
 const SESION_DURACION = 12 * 60 * 60 * 1000 // 12 horas
 
 export default function ConductorView() {

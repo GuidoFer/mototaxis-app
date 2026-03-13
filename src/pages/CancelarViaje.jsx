@@ -112,8 +112,8 @@ export default function CancelarViaje() {
           >
             {cancelando ? 'Cancelando...' : '❌ Sí, cancelar mi viaje'}
           </button>
-          <button className="btn-volver" onClick={() => navigate(-1)}>
-            Volver
+          <button className="btn-volver" onClick={() => window.location.href = '/'}>
+            Volver al inicio
           </button>
         </>
       )}
