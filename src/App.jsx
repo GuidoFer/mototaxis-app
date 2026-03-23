@@ -4,13 +4,22 @@ import SolicitudEncomienda from './pages/SolicitudEncomienda'
 import ConductorView from './pages/ConductorView'
 import CancelarViaje from './pages/CancelarViaje'
 
+// ✅ NUEVOS IMPORTS
+import DirectorioTaxis from './pages/DirectorioTaxis'
+import SindicatoDetalle from './pages/SindicatoDetalle'
+
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+
         {/* Pasajero */}
         <Route path="/moto/:ciudad" element={<SolicitudViaje />} />
         <Route path="/moto/encomienda/:ciudad" element={<SolicitudEncomienda />} />
+
+        {/* ✅ NUEVAS RUTAS TAXI */}
+        <Route path="/taxi/:ciudad" element={<DirectorioTaxis />} />
+        <Route path="/taxi/:ciudad/:asociacionId" element={<SindicatoDetalle />} />
 
         {/* Cancelación */}
         <Route path="/cancelar/:codigo" element={<CancelarViaje />} />
@@ -19,15 +28,28 @@ function App() {
         <Route path="/moto/conductor" element={<ConductorView />} />
 
         {/* Inicio */}
-        <Route path="/" element={
-          <div style={{ padding: 32, fontFamily: 'Arial' }}>
-            <h2>🏍️ Mototaxis API — OK</h2>
-            <ul>
-              <li><a href="/moto/warnes">/moto/warnes — Solicitar viaje</a></li>
-              <li><a href="/moto/conductor">/moto/conductor — Panel conductor</a></li>
-            </ul>
-          </div>
-        } />
+        <Route
+          path="/"
+          element={
+            <div style={{ padding: 32, fontFamily: 'Arial' }}>
+              <h2>🏍️ Mototaxis API — OK</h2>
+              <ul>
+                <li>
+                  <a href="/moto/warnes">
+                    /moto/warnes — Solicitar viaje
+                  </a>
+                </li>
+
+                <li>
+                  <a href="/moto/conductor">
+                    /moto/conductor — Panel conductor
+                  </a>
+                </li>
+              </ul>
+            </div>
+          }
+        />
+
       </Routes>
     </BrowserRouter>
   )

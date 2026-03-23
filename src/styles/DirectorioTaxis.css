@@ -1,0 +1,228 @@
+/* DirectorioTaxis.css */
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap');
+
+/* Contenedor principal */
+.directorio-app {
+  background: #0a0a0a;
+  min-height: 100vh;
+  font-family: 'DM Sans', sans-serif;
+  color: #f5f2ec;
+}
+
+/* Header */
+.directorio-header {
+  background: #111;
+  border-bottom: 1px solid #222;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.directorio-header-icon {
+  font-size: 2rem;
+}
+
+.directorio-header-titulo {
+  margin: 0;
+  font-size: 1.3rem;
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+}
+
+.directorio-header-sub {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #888;
+  font-weight: 500;
+}
+
+/* Body */
+.directorio-body {
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Botón GPS */
+.directorio-btn-gps {
+  background: rgba(232, 93, 4, 0.12);
+  border: 1.5px solid #e85d04;
+  border-radius: 14px;
+  color: #f5f2ec;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-family: 'Syne', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 18px 16px;
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+.directorio-btn-gps:hover {
+  background: rgba(232, 93, 4, 0.22);
+  transform: translateY(-1px);
+}
+
+.directorio-btn-gps-sub {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: #888;
+  text-align: center;
+}
+
+/* Detectando ubicación */
+.directorio-detectando {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #1a1a1a;
+  border-radius: 14px;
+  padding: 16px;
+  color: #888;
+  font-size: 0.88rem;
+}
+
+.directorio-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #333;
+  border-top: 2px solid #e85d04;
+  border-radius: 50%;
+  animation: directorio-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes directorio-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Error */
+.directorio-error {
+  background: rgba(220, 38, 38, 0.1);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  border-radius: 14px;
+  padding: 16px;
+  text-align: center;
+}
+
+.directorio-error p {
+  margin: 0 0 8px 0;
+  color: #ff8a8a;
+  font-size: 0.88rem;
+}
+
+.directorio-btn-reintentar {
+  background: transparent;
+  border: 1px solid #e85d04;
+  border-radius: 8px;
+  color: #e85d04;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-top: 8px;
+  padding: 8px 16px;
+  transition: all 0.2s ease;
+}
+
+.directorio-btn-reintentar:hover {
+  background: rgba(232, 93, 4, 0.12);
+}
+
+/* Subtítulo */
+.directorio-subtitulo {
+  font-size: 0.78rem;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 8px 0 0 0;
+  font-weight: 600;
+}
+
+/* Tarjetas de sindicatos */
+.directorio-sindicato-card {
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  transition: all 0.2s ease;
+}
+
+.directorio-sindicato-card:hover {
+  border-color: #e85d04;
+  background: #222;
+  transform: translateY(-2px);
+}
+
+.directorio-sindicato-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.directorio-sindicato-nombre {
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: 'Syne', sans-serif;
+  color: #f5f2ec;
+}
+
+.directorio-sindicato-distancia {
+  font-size: 0.78rem;
+  color: #888;
+}
+
+/* Botón elegir */
+.directorio-btn-elegir {
+  background: #e85d04;
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  cursor: pointer;
+  font-family: 'Syne', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 10px 16px;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.directorio-btn-elegir:hover {
+  background: #f06c14;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(232, 93, 4, 0.3);
+}
+
+/* Responsive para móviles */
+@media (max-width: 480px) {
+  .directorio-body {
+    padding: 20px 16px;
+  }
+  
+  .directorio-sindicato-card {
+    padding: 14px;
+  }
+  
+  .directorio-sindicato-nombre {
+    font-size: 0.95rem;
+  }
+  
+  .directorio-btn-elegir {
+    padding: 8px 14px;
+    font-size: 0.8rem;
+  }
+}
