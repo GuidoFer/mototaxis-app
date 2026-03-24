@@ -431,3 +431,70 @@
   padding: 12px;
   flex-shrink: 0;
 }
+
+.ofertas-esperando {
+  text-align: center;
+  padding: 32px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.ofertas-countdown {
+  font-size: 3rem;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  color: #e85d04;
+}
+
+.ofertas-sin-resultados {
+  text-align: center;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.oferta-card {
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.oferta-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.oferta-label {
+  font-size: 0.78rem;
+  color: #888;
+}
+
+.oferta-tarifa {
+  font-size: 1.4rem;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  color: #f5f2ec;
+}
+
+.sinddetalle-btn-elegir {
+  background: #e85d04;
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  cursor: pointer;
+  font-family: 'Syne', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 10px 16px;
+  white-space: nowrap;
+}

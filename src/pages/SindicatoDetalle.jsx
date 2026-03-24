@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
-import { crearViaje } from '../services/api'
+import { crearViaje, getOfertasViaje, elegirOferta } from '../services/api'
 import '../styles/SindicatoDetalle.css'
 import 'leaflet/dist/leaflet.css'
 
@@ -21,6 +21,157 @@ function SelectorMapa({ onSeleccionar }) {
     }
   })
   return null
+}
+
+function OfertasScreen({ solicitud, sindicato, ciudad, onLlamar, onVolver }) {
+  const navigate = useNavigate()
+  const [segundos, setSegundos] = useState(30)
+  const [ofertas, setOfertas] = useState([])
+  const [cargandoOfertas, setCargandoOfertas] = useState(false)
+  const [elegida, setElegida] = useState(null)
+  const [eligiendo, setEligiendo] = useState(false)
+  const [mensaje, setMensaje] = useState(null)
+
+  // Countdown 30 segundos
+  useEffect(() => {
+    if (segundos <= 0) return
+    const timer = setTimeout(() => setSegundos(s => s - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [segundos])
+
+  // Cuando llega a 0 carga ofertas
+  useEffect(() => {
+    if (segundos === 0) {
+      cargarOfertas()
+    }
+  }, [segundos])
+
+  const cargarOfertas = async () => {
+    setCargandoOfertas(true)
+    try {
+      const { getOfertasViaje } = await import('../services/api')
+      const data = await getOfertasViaje(solicitud.codigo)
+      setOfertas(data)
+    } catch (err) {
+      setMensaje({ tipo: 'error', texto: 'Error al cargar ofertas.' })
+    } finally {
+      setCargandoOfertas(false)
+    }
+  }
+
+  const handleElegir = async (oferta) => {
+    setEligiendo(true)
+    try {
+      const { elegirOferta } = await import('../services/api')
+      await elegirOferta(solicitud.codigo, oferta.conductor_id)
+      setElegida(oferta)
+    } catch (err) {
+      setMensaje({ tipo: 'error', texto: err.message })
+    } finally {
+      setEligiendo(false)
+    }
+  }
+
+  // Conductor elegido
+  if (elegida) {
+    return (
+      <div className="sinddetalle-app">
+        <div className="sinddetalle-header">
+          <h1 className="sinddetalle-titulo">{sindicato.asociacion_nombre}</h1>
+        </div>
+        <div className="sinddetalle-exito">
+          <div className="sinddetalle-exito-icon">🚕</div>
+          <h2>¡Taxi confirmado!</h2>
+          <div className="sinddetalle-codigo">{solicitud.codigo}</div>
+          <p className="sinddetalle-exito-desc">
+            Tarifa acordada: <strong>Bs. {elegida.tarifa}</strong>
+          </p>
+          <p className="sinddetalle-exito-desc">
+            El conductor te contactará por WhatsApp con su información y tiempo de llegada.
+          </p>
+          <button className="sinddetalle-btn-whatsapp" onClick={onLlamar}>
+            💬 Abrir WhatsApp con {sindicato.asociacion_nombre}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="sinddetalle-app">
+      <div className="sinddetalle-header">
+        <h1 className="sinddetalle-titulo">{sindicato.asociacion_nombre}</h1>
+      </div>
+
+      <div className="sinddetalle-body">
+        <div className="sinddetalle-codigo" style={{ textAlign: 'center' }}>
+          {solicitud.codigo}
+        </div>
+
+        {segundos > 0 && (
+          <div className="ofertas-esperando">
+            <div className="ofertas-countdown">{segundos}</div>
+            <p>Esperando las mejores tarifas</p>
+            <div className="buscando-indicator">
+              <span className="buscando-dot" />
+              <span className="buscando-dot" />
+              <span className="buscando-dot" />
+            </div>
+          </div>
+        )}
+
+        {segundos === 0 && cargandoOfertas && (
+          <div className="ofertas-esperando">
+            <p>Cargando ofertas...</p>
+          </div>
+        )}
+
+        {segundos === 0 && !cargandoOfertas && ofertas.length === 0 && (
+          <div className="ofertas-sin-resultados">
+            <div className="sinddetalle-exito-icon">😕</div>
+            <h3>Sin conductores disponibles</h3>
+            <p>Ningún conductor envió una oferta. Puedes llamar directamente o buscar otro sindicato.</p>
+            <button className="sinddetalle-btn-llamar" onClick={onLlamar}>
+              📞 Llamar por WhatsApp
+            </button>
+            <button className="sinddetalle-btn-cancelar-modo" onClick={onVolver}>
+              Ver otros sindicatos
+            </button>
+          </div>
+        )}
+
+        {segundos === 0 && !cargandoOfertas && ofertas.length > 0 && (
+          <>
+            <p className="sinddetalle-subtitulo">Elige tu tarifa</p>
+            {ofertas.map((oferta, idx) => (
+              <div key={oferta.conductor_id} className="oferta-card">
+                <div className="oferta-info">
+                  <span className="oferta-label">
+                    {idx === 0 ? '🏆 Mejor precio' : '2da opción'}
+                  </span>
+                  <span className="oferta-tarifa">Bs. {oferta.tarifa}</span>
+                </div>
+                <button
+                  className="sinddetalle-btn-elegir"
+                  onClick={() => handleElegir(oferta)}
+                  disabled={eligiendo}
+                >
+                  {eligiendo ? '...' : 'Elegir'}
+                </button>
+              </div>
+            ))}
+
+            {mensaje && (
+              <div className={`sinddetalle-mensaje ${mensaje.tipo}`}>
+                {mensaje.texto}
+              </div>
+            )}
+          </>
+        )}
+
+      </div>
+    </div>
+  )
 }
 
 export default function SindicatoDetalle() {
@@ -141,26 +292,13 @@ export default function SindicatoDetalle() {
   // ── PANTALLA ÉXITO ────────────────────────────────────────
   if (solicitudExitosa) {
     return (
-      <div className="sinddetalle-app">
-        <div className="sinddetalle-header">
-          <button className="sinddetalle-btn-volver" onClick={() => navigate(`/taxi/${ciudad}`)}>
-            ← Volver
-          </button>
-          <h1 className="sinddetalle-titulo">{sindicato.asociacion_nombre}</h1>
-        </div>
-        <div className="sinddetalle-exito">
-          <div className="sinddetalle-exito-icon">✅</div>
-          <h2>¡Solicitud enviada!</h2>
-          <p>Tu pedido fue enviado a {sindicato.asociacion_nombre}.</p>
-          <div className="sinddetalle-codigo">{solicitudExitosa.codigo}</div>
-          <p className="sinddetalle-exito-desc">
-            En 30 segundos verás las tarifas disponibles.
-          </p>
-          <button className="sinddetalle-btn-whatsapp" onClick={handleLlamar}>
-            💬 Abrir WhatsApp con {sindicato.asociacion_nombre}
-          </button>
-        </div>
-      </div>
+      <OfertasScreen
+        solicitud={solicitudExitosa}
+        sindicato={sindicato}
+        ciudad={ciudad}
+        onLlamar={handleLlamar}
+        onVolver={() => navigate(`/taxi/${ciudad}`)}
+      />
     )
   }
 
@@ -192,7 +330,7 @@ export default function SindicatoDetalle() {
             </button>
             <button className="sinddetalle-btn-formulario" onClick={() => setModo('formulario')}>
               📋 Solicitar por formulario
-              <span className="sinddetalle-btn-sub">La operadora te contactará con el precio</span>
+              <span className="sinddetalle-btn-sub">Es automatico y mas rapido</span>
             </button>
           </div>
         )}
@@ -229,7 +367,7 @@ export default function SindicatoDetalle() {
                   onClick={() => setMostrarMapa(true)}
                   title="Marcar en mapa"
                 >
-                  📍Mapa
+                  Mapa
                 </button>
               </div>
             </div>
