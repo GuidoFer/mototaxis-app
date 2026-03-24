@@ -1,0 +1,664 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --negro:       #0f0f0f;
+  --blanco:      #f5f2ec;
+  --naranja:     #e85d04;
+  --verde:       #2dc653;
+  --verde-bg:    rgba(45, 198, 83, 0.12);
+  --verde-borde: rgba(45, 198, 83, 0.3);
+  --rojo:        #e63946;
+  --rojo-bg:     rgba(230, 57, 70, 0.12);
+  --rojo-borde:  rgba(230, 57, 70, 0.3);
+  --gris:        #2a2a2a;
+  --gris2:       #3d3d3d;
+  --gris3:       #555;
+}
+
+body {
+  background: var(--negro);
+  color: var(--blanco);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100dvh;
+}
+
+.conductortaxi-app {
+  max-width: 440px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* HEADER */
+.conductortaxi-header {
+  padding: 24px;
+  border-bottom: 1px solid var(--gris);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.conductortaxi-header-left { display: flex; align-items: center; gap: 14px; }
+.conductortaxi-header-icon { font-size: 2rem; line-height: 1; }
+.conductortaxi-header h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+.conductortaxi-header p { font-size: 0.75rem; color: #888; margin-top: 3px; }
+
+/* BADGE ESTADO */
+.estado-badge {
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 6px 14px;
+  text-transform: uppercase;
+}
+.estado-badge.disponible {
+  background: var(--verde-bg);
+  border: 1px solid var(--verde-borde);
+  color: var(--verde);
+}
+.estado-badge.ocupado {
+  background: var(--rojo-bg);
+  border: 1px solid var(--rojo-borde);
+  color: var(--rojo);
+}
+.estado-badge.desconectado {
+  background: rgba(85,85,85,0.2);
+  border: 1px solid #444;
+  color: #888;
+}
+
+/* BODY */
+.conductortaxi-body {
+  flex: 1;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* CARD INFO CONDUCTOR */
+.card {
+  background: var(--gris);
+  border: 1px solid var(--gris2);
+  border-radius: 16px;
+  padding: 20px;
+}
+.card-titulo {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #888;
+  margin-bottom: 14px;
+}
+.conductor-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.info-item label {
+  font-size: 0.7rem;
+  color: #888;
+  display: block;
+  margin-bottom: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.info-item span {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--blanco);
+  text-transform: capitalize;
+}
+.info-item span.naranja { color: var(--naranja); }
+.info-item span.verde { color: var(--verde); }
+
+/* TOGGLE DISPONIBILIDAD */
+.disponibilidad-section { display: flex; flex-direction: column; gap: 12px; }
+.disponibilidad-section .seccion-titulo {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #888;
+}
+.toggle-disponibilidad {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.btn-disponible, .btn-ocupado {
+  border: 1.5px solid;
+  border-radius: 14px;
+  cursor: pointer;
+  font-family: 'Syne', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding: 16px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.btn-disponible {
+  background: transparent;
+  border-color: var(--gris2);
+  color: #666;
+}
+.btn-disponible.activo {
+  background: var(--verde-bg);
+  border-color: var(--verde);
+  color: var(--verde);
+  position: relative;
+  animation: conductortaxi-pulse-verde 1.4s ease-in-out infinite;
+  box-shadow: 0 0 12px rgba(45, 198, 83, 0.6);
+}
+.btn-disponible:hover:not(.activo) { border-color: var(--verde); color: var(--verde); }
+.btn-disponible.activo::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 14px;
+  border: 2px solid rgba(45,198,83,0.6);
+  animation: conductortaxi-halo-verde 1.8s ease-out infinite;
+}
+.btn-ocupado {
+  background: transparent;
+  border-color: var(--gris2);
+  color: #666;
+}
+.btn-ocupado.activo {
+  background: var(--rojo-bg);
+  border-color: var(--rojo);
+  color: var(--rojo);
+  animation: conductortaxi-pulse-rojo 1.4s ease-in-out infinite;
+  box-shadow: 0 0 12px rgba(230, 57, 70, 0.5);
+}
+.btn-ocupado:hover:not(.activo) { border-color: var(--rojo); color: var(--rojo); }
+
+/* VIAJES SECTION */
+.viajes-section { display: flex; flex-direction: column; gap: 12px; }
+.viajes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.viajes-header .seccion-titulo {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #888;
+}
+.btn-refrescar {
+  background: transparent;
+  border: 1px solid var(--gris2);
+  border-radius: 8px;
+  color: #888;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-family: 'DM Sans', sans-serif;
+  padding: 8px 16px;
+  transition: all 0.2s;
+}
+.btn-refrescar:hover { border-color: var(--naranja); color: var(--naranja); }
+.btn-refrescar:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* VIAJE CARD */
+.viaje-card {
+  background: var(--gris);
+  border: 1px solid var(--gris2);
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: conductortaxi-slideIn 0.3s ease;
+}
+@keyframes conductortaxi-slideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.viaje-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.viaje-codigo {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--naranja);
+  letter-spacing: 0.05em;
+}
+.viaje-countdown {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 20px;
+  background: rgba(85,85,85,0.3);
+  color: #aaa;
+}
+.viaje-countdown.urgente {
+  background: rgba(230,57,70,0.2);
+  color: #ff8a8a;
+  animation: conductortaxi-pulse-urgente 0.8s ease-in-out infinite;
+}
+@keyframes conductortaxi-pulse-urgente {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+.viaje-datos { display: flex; flex-direction: column; gap: 8px; }
+.viaje-fila {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.88rem;
+}
+.viaje-fila-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+.viaje-fila-texto { color: #ccc; line-height: 1.4; }
+.viaje-fila-texto strong { color: var(--blanco); }
+
+/* MAPS BUTTONS */
+.viaje-maps-btns {
+  display: flex;
+  gap: 10px;
+}
+.btn-maps {
+  background: rgba(45,198,83,0.1);
+  border: 1px solid var(--gris2);
+  border-radius: 10px;
+  color: #888;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 8px 12px;
+  transition: all 0.2s;
+  flex: 1;
+}
+.btn-maps:hover {
+  border-color: var(--verde);
+  color: var(--verde);
+}
+.btn-maps-destino:hover {
+  border-color: var(--naranja);
+  color: var(--naranja);
+}
+
+/* OFERTA SECTION */
+.oferta-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.oferta-label-input {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #888;
+}
+.oferta-input-group {
+  display: flex;
+  gap: 10px;
+}
+.tarifa-input {
+  background: var(--negro);
+  border: 1.5px solid var(--gris2);
+  border-radius: 10px;
+  color: var(--blanco);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 12px 16px;
+  flex: 1;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.tarifa-input:focus { border-color: var(--naranja); }
+.btn-enviar-oferta {
+  background: var(--naranja);
+  border: none;
+  border-radius: 10px;
+  color: white;
+  cursor: pointer;
+  font-family: 'Syne', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 12px 20px;
+  transition: all 0.2s;
+}
+.btn-enviar-oferta:hover:not(:disabled) {
+  background: #ff6a1a;
+  transform: translateY(-1px);
+}
+.btn-enviar-oferta:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.oferta-expirada {
+  text-align: center;
+  font-size: 0.75rem;
+  color: #888;
+  padding: 8px;
+  background: rgba(230,57,70,0.1);
+  border-radius: 8px;
+}
+
+/* BOTÓN RECHAZAR / IGNORAR */
+.btn-rechazar {
+  background: transparent;
+  border: 1.5px solid var(--gris2);
+  border-radius: 12px;
+  color: #888;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 10px;
+  transition: all 0.2s;
+}
+.btn-rechazar:hover {
+  border-color: var(--rojo);
+  color: var(--rojo);
+}
+
+.btn-silenciar {
+  background: rgba(85,85,85,0.2);
+  border: 1px solid var(--gris2);
+  border-radius: 8px;
+  color: #888;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  align-self: flex-start;
+  transition: all 0.2s;
+}
+.btn-silenciar:hover {
+  border-color: var(--naranja);
+  color: var(--naranja);
+}
+
+/* OFERTA ENVIADA CARD */
+.oferta-enviada-card {
+  background: var(--verde-bg);
+  border: 1.5px solid var(--verde-borde);
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
+}
+.oferta-enviada-titulo {
+  font-family: 'Syne', sans-serif;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--verde);
+}
+.oferta-enviada-desc {
+  font-size: 0.85rem;
+  color: #ccc;
+}
+
+/* EMPTY STATE */
+.empty-state {
+  text-align: center;
+  padding: 32px 16px;
+  color: #555;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.empty-state .empty-icon { font-size: 2.5rem; margin-bottom: 12px; display: block; }
+
+/* LOADING */
+.conductortaxi-loading {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 32px;
+  text-align: center;
+}
+.conductortaxi-spinner {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(255,255,255,0.15);
+  border-top-color: var(--naranja);
+  border-radius: 50%;
+  animation: conductortaxi-spin 0.7s linear infinite;
+}
+@keyframes conductortaxi-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* TOAST */
+.mensaje-toast {
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 12px 16px;
+  line-height: 1.4;
+}
+.mensaje-toast.error {
+  background: var(--rojo-bg);
+  border: 1px solid var(--rojo-borde);
+  color: #ff8a8a;
+}
+.mensaje-toast.exito {
+  background: var(--verde-bg);
+  border: 1px solid var(--verde-borde);
+  color: #6dffaa;
+}
+
+/* BOTÓN ACTIVAR ALARMA */
+.btn-activar-alarma {
+  background: rgba(232, 93, 4, 0.15);
+  border: 1.5px solid var(--naranja);
+  border-radius: 12px;
+  color: var(--naranja);
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 14px 16px;
+  width: 100%;
+  transition: all 0.2s;
+  animation: conductortaxi-pulse-border 1.5s ease-in-out infinite;
+}
+.btn-activar-alarma:hover { background: rgba(232, 93, 4, 0.25); }
+@keyframes conductortaxi-pulse-border {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(232, 93, 4, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(232, 93, 4, 0); }
+}
+
+/* BOTÓN CERRAR SESIÓN */
+.btn-cerrar-sesion {
+  background: transparent;
+  border: none;
+  color: #555;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.72rem;
+  padding: 0;
+  transition: color 0.2s;
+}
+.btn-cerrar-sesion:hover { color: #e63946; }
+
+/* ANIMACIONES */
+@keyframes conductortaxi-pulse-verde {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 10px rgba(45,198,83,0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 22px rgba(45,198,83,0.8);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 10px rgba(45,198,83,0.4);
+  }
+}
+@keyframes conductortaxi-pulse-rojo {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 10px rgba(230,57,70,0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 22px rgba(230,57,70,0.8);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 10px rgba(230,57,70,0.4);
+  }
+}
+@keyframes conductortaxi-halo-verde {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  70% {
+    transform: scale(1.25);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.25);
+    opacity: 0;
+  }
+}
+
+/* ULTIMO REFRESH */
+.ultimo-refresh {
+  font-size: 0.7rem;
+  color: #555;
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* LOGIN */
+.campo-login {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.campo-login label {
+  font-size: 0.78rem;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.input-login {
+  background: #0f0f0f;
+  border: 1.5px solid #3d3d3d;
+  border-radius: 12px;
+  color: #f5f2ec;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 1rem;
+  padding: 14px 16px;
+  width: 100%;
+  transition: border-color 0.2s;
+}
+.input-login:focus {
+  border-color: var(--naranja);
+  outline: none;
+}
+.input-pin-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.input-pin-wrap .input-login {
+  padding-right: 48px;
+}
+.btn-ver-pin {
+  position: absolute;
+  right: 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 4px;
+}
+
+/* BOTÓN COMPLETAR */
+.btn-completar {
+  background: var(--naranja);
+  border: none;
+  border-radius: 12px;
+  color: white;
+  cursor: pointer;
+  font-family: 'Syne', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 16px;
+  width: 100%;
+  transition: all 0.2s;
+}
+.btn-completar:hover:not(:disabled) {
+  background: #ff6a1a;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(232,93,4,0.35);
+}
+.btn-completar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* MENSAJE */
+.mensaje {
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 12px 16px;
+}
+.mensaje.error {
+  background: var(--rojo-bg);
+  border: 1px solid var(--rojo-borde);
+  color: #ff8a8a;
+}
+.mensaje.exito {
+  background: var(--verde-bg);
+  border: 1px solid var(--verde-borde);
+  color: #6dffaa;
+}
+
+/* RESPONSIVE */
+@media (max-width: 480px) {
+  .conductortaxi-body {
+    padding: 20px 16px;
+  }
+  .viaje-card {
+    padding: 14px;
+  }
+  .oferta-input-group {
+    flex-direction: column;
+  }
+  .btn-enviar-oferta {
+    padding: 12px;
+  }
+  .viaje-maps-btns {
+    flex-direction: column;
+  }
+}

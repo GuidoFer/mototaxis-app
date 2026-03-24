@@ -7,6 +7,9 @@ import CancelarViaje from './pages/CancelarViaje'
 // ✅ NUEVOS IMPORTS
 import DirectorioTaxis from './pages/DirectorioTaxis'
 import SindicatoDetalle from './pages/SindicatoDetalle'
+// ===== MEJORA: Importar ConductorTaxis =====
+import ConductorTaxis from './pages/ConductorTaxis'
+// ===========================================
 
 function App() {
   return (
@@ -20,6 +23,10 @@ function App() {
         {/* ✅ NUEVAS RUTAS TAXI */}
         <Route path="/taxi/:ciudad" element={<DirectorioTaxis />} />
         <Route path="/taxi/:ciudad/:asociacionId" element={<SindicatoDetalle />} />
+        
+        {/* ===== MEJORA: Ruta para conductor de taxi ===== */}
+        <Route path="/taxi/:ciudad/conductor" element={<ConductorTaxis />} />
+        {/* ============================================= */}
 
         {/* Cancelación */}
         <Route path="/cancelar/:codigo" element={<CancelarViaje />} />
