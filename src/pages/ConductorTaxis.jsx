@@ -4,7 +4,8 @@ import {
   verificarConductor,
   actualizarEstadoConductor,
   enviarOferta,
-  getViajesHoy, // ===== MEJORA 1: Import estático =====
+  getViajesHoy,
+  getViaje // ===== MEJORA: Import getViaje =====
 } from '../services/api'
 import '../styles/ConductorTaxis.css'
 
@@ -35,9 +36,8 @@ export default function ConductorTaxis() {
 
   // ── OFERTA ────────────────────────────────────────────────
   const [ofertaEnviada, setOfertaEnviada] = useState(null) // { codigo, tarifa }
-  // ===== MEJORA 3: tarifaInput por viaje =====
+  const [ofertaAceptada, setOfertaAceptada] = useState(null) // ===== MEJORA: Estado para oferta aceptada =====
   const [tarifas, setTarifas] = useState({}) // { codigo: valor }
-  // ===========================================
   const [countdowns, setCountdowns] = useState({}) // { codigo: segundos }
   const [enviandoOferta, setEnviandoOferta] = useState(false)
 
@@ -52,7 +52,7 @@ export default function ConductorTaxis() {
   const viajesAnterioresRef = useRef([])
   const intervaloRef = useRef(null)
 
-  // ===== MEJORA 2: Recuperar viajes ignorados de localStorage =====
+  // ===== MEJORA: Recuperar viajes ignorados de localStorage =====
   useEffect(() => {
     const guardado = localStorage.getItem('conductorViajesIgnorados')
     if (guardado) {
@@ -97,13 +97,47 @@ export default function ConductorTaxis() {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [sesionVerificada])
 
-  // ===== MEJORA 2: Guardar viajes ignorados en localStorage =====
+  // ===== MEJORA: Guardar viajes ignorados en localStorage =====
   useEffect(() => {
     if (viajesIgnorados.length > 0 || localStorage.getItem('conductorViajesIgnorados')) {
       localStorage.setItem('conductorViajesIgnorados', JSON.stringify(viajesIgnorados))
     }
   }, [viajesIgnorados])
   // ================================================================
+
+  // ===== MEJORA: Polling para verificar si la oferta fue aceptada =====
+  useEffect(() => {
+    if (!ofertaEnviada || !conductor) return
+
+    const polling = setInterval(async () => {
+      try {
+        const viaje = await getViaje(ofertaEnviada.codigo)
+
+        if (viaje.estado === 'asignado' && viaje.conductor_id === conductor.id) {
+          clearInterval(polling)
+          setOfertaAceptada({
+            ...viaje,
+            tarifa: ofertaEnviada.tarifa
+          })
+          setOfertaEnviada(null)
+          cambiarEstado('ocupado')
+        } else if (viaje.estado === 'asignado' && viaje.conductor_id !== conductor.id) {
+          clearInterval(polling)
+          setOfertaEnviada(null)
+          mostrarToast('error', '😔 Otro conductor tomó el viaje.')
+        } else if (['cancelado_pasajero', 'cancelado_conductor'].includes(viaje.estado)) {
+          clearInterval(polling)
+          setOfertaEnviada(null)
+          mostrarToast('error', 'El viaje fue cancelado.')
+        }
+      } catch (err) {
+        console.log('Polling oferta error:', err)
+      }
+    }, 5000)
+
+    return () => clearInterval(polling)
+  }, [ofertaEnviada, conductor])
+  // =========================================================================
 
   // ── LOGIN ─────────────────────────────────────────────────
   const handleLogin = async () => {
@@ -207,9 +241,7 @@ export default function ConductorTaxis() {
     if (!conductor) return
     setCargandoViajes(true)
     try {
-      // ===== MEJORA 1: Usar import estático directamente =====
       const todos = await getViajesHoy(conductor.asociacion_id)
-      // ======================================================
 
       const pendientes = todos.filter(v =>
         v.estado === 'notificado' &&
@@ -288,12 +320,10 @@ export default function ConductorTaxis() {
 
   // ── ENVIAR OFERTA ─────────────────────────────────────────
   const handleEnviarOferta = async (viaje) => {
-    // ===== MEJORA 3: Obtener tarifa del objeto tarifas =====
     const tarifa = tarifas[viaje.codigo]
     if (!tarifa || isNaN(parseFloat(tarifa))) {
       return mostrarToast('error', 'Ingresa una tarifa válida.')
     }
-    // =======================================================
     setEnviandoOferta(true)
     try {
       await enviarOferta(viaje.codigo, conductor.id, conductor.asociacion_id, parseFloat(tarifa))
@@ -336,6 +366,111 @@ export default function ConductorTaxis() {
       </div>
     )
   }
+
+  // ===== MEJORA: PANTALLA OFERTA ACEPTADA =====
+  if (ofertaAceptada) {
+    const celular = String(ofertaAceptada.celular_pasajero).replace(/\D/g, '')
+    const celularWA = celular.startsWith('591') ? celular : `591${celular}`
+    const [tiempoLlegada, setTiempoLlegada] = useState('')
+
+    const enviarWhatsApp = () => {
+      if (!tiempoLlegada.trim()) return mostrarToast('error', 'Ingresa el tiempo de llegada.')
+      const msg = encodeURIComponent(
+        `🚕 ¡Hola! Soy tu conductor.\n\n` +
+        `👤 ${conductor.nombre}\n` +
+        `🚗 ${conductor.modelo_vehiculo || 'Taxi'} — ${conductor.color_vehiculo || ''}\n` +
+        `🔖 Placa: ${conductor.placa || ''}\n` +
+        `💰 Tarifa acordada: Bs. ${ofertaAceptada.tarifa}\n` +
+        `⏱ Tiempo de llegada: ${tiempoLlegada} minutos\n\n` +
+        `Por favor espérame en tu ubicación. 📍`
+      )
+      window.open(`https://wa.me/${celularWA}?text=${msg}`, '_blank')
+    }
+
+    return (
+      <div className="conductortaxi-app">
+        <div className="conductortaxi-header">
+          <div className="conductortaxi-header-left">
+            <span className="conductortaxi-header-icon">🚕</span>
+            <div>
+              <h1>{conductor.nombre}</h1>
+              <p>{conductor.asociacion_nombre}</p>
+            </div>
+          </div>
+        </div>
+        <div className="conductortaxi-body">
+          <div className="viaje-asignado-card">
+            <p className="viaje-asignado-titulo">✅ ¡Tu oferta fue aceptada!</p>
+            <div className="viaje-datos">
+              <div className="viaje-fila">
+                <span className="viaje-fila-icon">📍</span>
+                <span className="viaje-fila-texto">{ofertaAceptada.referencia_origen}</span>
+              </div>
+              <div className="viaje-fila">
+                <span className="viaje-fila-icon">🏁</span>
+                <span className="viaje-fila-texto">{ofertaAceptada.destino_referencia}</span>
+              </div>
+              <div className="viaje-fila">
+                <span className="viaje-fila-icon">📱</span>
+                <span className="viaje-fila-texto">{ofertaAceptada.celular_pasajero}</span>
+              </div>
+              <div className="viaje-fila">
+                <span className="viaje-fila-icon">💰</span>
+                <span className="viaje-fila-texto">Bs. {ofertaAceptada.tarifa}</span>
+              </div>
+            </div>
+
+            {ofertaAceptada.lat_pasajero && ofertaAceptada.lng_pasajero && (
+              <button
+                className="btn-maps"
+                onClick={() => verEnMaps(ofertaAceptada.lat_pasajero, ofertaAceptada.lng_pasajero)}
+              >
+                📍 Ver origen en Maps
+              </button>
+            )}
+
+            {ofertaAceptada.lat_destino && ofertaAceptada.lng_destino && (
+              <button
+                className="btn-maps btn-maps-destino"
+                onClick={() => verEnMaps(ofertaAceptada.lat_destino, ofertaAceptada.lng_destino)}
+              >
+                🏁 Ver destino en Maps
+              </button>
+            )}
+
+            <div className="campo-login" style={{ marginTop: '16px' }}>
+              <label>Tiempo de llegada (minutos)</label>
+              <input
+                className="input-login"
+                type="number"
+                placeholder="Ej: 5"
+                value={tiempoLlegada}
+                onChange={e => setTiempoLlegada(e.target.value)}
+              />
+            </div>
+
+            <button
+              className="btn-completar"
+              onClick={enviarWhatsApp}
+            >
+              💬 Enviar mensaje al pasajero
+            </button>
+
+            <button
+              className="btn-cancelar-viaje"
+              onClick={() => {
+                setOfertaAceptada(null)
+                cambiarEstado('disponible')
+              }}
+            >
+              Marcar como completado
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+  // ===========================================
 
   // ── PANTALLA LOGIN ────────────────────────────────────────
   if (!sesionVerificada) {
@@ -484,9 +619,7 @@ export default function ConductorTaxis() {
             ) : (
               viajes.map(viaje => {
                 const segs = countdowns[viaje.codigo] ?? COUNTDOWN_OFERTA
-                // ===== MEJORA 3: Obtener tarifa específica del viaje =====
                 const tarifaActual = tarifas[viaje.codigo] || ''
-                // ========================================================
                 return (
                   <div key={viaje.codigo} className="viaje-card">
 
@@ -549,10 +682,8 @@ export default function ConductorTaxis() {
                             type="number"
                             min="4"
                             placeholder="Ej: 20"
-                            // ===== MEJORA 3: Usar tarifa específica del viaje =====
                             value={tarifaActual}
                             onChange={e => setTarifas(prev => ({ ...prev, [viaje.codigo]: e.target.value }))}
-                            // ===================================================
                           />
                           <button
                             className="btn-enviar-oferta"
