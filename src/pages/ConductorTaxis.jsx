@@ -5,7 +5,7 @@ import {
   actualizarEstadoConductor,
   enviarOferta,
   getViajesHoy,
-  getViaje // ===== MEJORA: Import getViaje =====
+  getViaje
 } from '../services/api'
 import '../styles/ConductorTaxis.css'
 
@@ -36,10 +36,11 @@ export default function ConductorTaxis() {
 
   // ── OFERTA ────────────────────────────────────────────────
   const [ofertaEnviada, setOfertaEnviada] = useState(null) // { codigo, tarifa }
-  const [ofertaAceptada, setOfertaAceptada] = useState(null) // ===== MEJORA: Estado para oferta aceptada =====
+  const [ofertaAceptada, setOfertaAceptada] = useState(null)
   const [tarifas, setTarifas] = useState({}) // { codigo: valor }
   const [countdowns, setCountdowns] = useState({}) // { codigo: segundos }
   const [enviandoOferta, setEnviandoOferta] = useState(false)
+  const [tiempoLlegada, setTiempoLlegada] = useState('') // ✅ MOVIDO AQUÍ (fuera del condicional)
 
   // ── ALARMA ────────────────────────────────────────────────
   const [audioActivado, setAudioActivado] = useState(false)
@@ -52,7 +53,7 @@ export default function ConductorTaxis() {
   const viajesAnterioresRef = useRef([])
   const intervaloRef = useRef(null)
 
-  // ===== MEJORA: Recuperar viajes ignorados de localStorage =====
+  // ===== Recuperar viajes ignorados de localStorage =====
   useEffect(() => {
     const guardado = localStorage.getItem('conductorViajesIgnorados')
     if (guardado) {
@@ -63,7 +64,7 @@ export default function ConductorTaxis() {
       }
     }
   }, [])
-  // ================================================================
+  // ==========================================================
 
   // ── VERIFICAR SESIÓN ──────────────────────────────────────
   useEffect(() => {
@@ -97,15 +98,15 @@ export default function ConductorTaxis() {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [sesionVerificada])
 
-  // ===== MEJORA: Guardar viajes ignorados en localStorage =====
+  // ===== Guardar viajes ignorados en localStorage =====
   useEffect(() => {
     if (viajesIgnorados.length > 0 || localStorage.getItem('conductorViajesIgnorados')) {
       localStorage.setItem('conductorViajesIgnorados', JSON.stringify(viajesIgnorados))
     }
   }, [viajesIgnorados])
-  // ================================================================
+  // ==========================================================
 
-  // ===== MEJORA: Polling para verificar si la oferta fue aceptada =====
+  // ===== Polling para verificar si la oferta fue aceptada =====
   useEffect(() => {
     if (!ofertaEnviada || !conductor) return
 
@@ -164,6 +165,9 @@ export default function ConductorTaxis() {
     setSesionVerificada(false)
     setCelularInput('')
     setPinInput('')
+    setOfertaEnviada(null)
+    setOfertaAceptada(null)
+    setTiempoLlegada('')
   }
 
   // ── TOAST ─────────────────────────────────────────────────
@@ -275,7 +279,7 @@ export default function ConductorTaxis() {
     } finally {
       setCargandoViajes(false)
     }
-  }, [conductor, viajesIgnorados, audioActivado, alarmaSilenciada])
+  }, [conductor, viajesIgnorados])
 
   // ── AUTO REFRESH ──────────────────────────────────────────
   useEffect(() => {
@@ -367,19 +371,21 @@ export default function ConductorTaxis() {
     )
   }
 
-  // ===== MEJORA: PANTALLA OFERTA ACEPTADA =====
+  // ===== PANTALLA OFERTA ACEPTADA (CORREGIDA - SIN useState DENTRO) =====
   if (ofertaAceptada) {
     const celular = String(ofertaAceptada.celular_pasajero).replace(/\D/g, '')
     const celularWA = celular.startsWith('591') ? celular : `591${celular}`
-    const [tiempoLlegada, setTiempoLlegada] = useState('')
 
     const enviarWhatsApp = () => {
-      if (!tiempoLlegada.trim()) return mostrarToast('error', 'Ingresa el tiempo de llegada.')
+      if (!tiempoLlegada.trim()) {
+        mostrarToast('error', 'Ingresa el tiempo de llegada.')
+        return
+      }
       const msg = encodeURIComponent(
         `🚕 ¡Hola! Soy tu conductor.\n\n` +
-        `👤 ${conductor.nombre}\n` +
-        `🚗 ${conductor.modelo_vehiculo || 'Taxi'} — ${conductor.color_vehiculo || ''}\n` +
-        `🔖 Placa: ${conductor.placa || ''}\n` +
+        `👤 ${conductor?.nombre || 'Conductor'}\n` +
+        `🚗 ${conductor?.modelo_vehiculo || 'Taxi'} — ${conductor?.color_vehiculo || ''}\n` +
+        `🔖 Placa: ${conductor?.placa || ''}\n` +
         `💰 Tarifa acordada: Bs. ${ofertaAceptada.tarifa}\n` +
         `⏱ Tiempo de llegada: ${tiempoLlegada} minutos\n\n` +
         `Por favor espérame en tu ubicación. 📍`
@@ -393,8 +399,8 @@ export default function ConductorTaxis() {
           <div className="conductortaxi-header-left">
             <span className="conductortaxi-header-icon">🚕</span>
             <div>
-              <h1>{conductor.nombre}</h1>
-              <p>{conductor.asociacion_nombre}</p>
+              <h1>{conductor?.nombre || 'Conductor'}</h1>
+              <p>{conductor?.asociacion_nombre || ''}</p>
             </div>
           </div>
         </div>
@@ -460,6 +466,7 @@ export default function ConductorTaxis() {
               className="btn-cancelar-viaje"
               onClick={() => {
                 setOfertaAceptada(null)
+                setTiempoLlegada('')
                 cambiarEstado('disponible')
               }}
             >
@@ -470,7 +477,7 @@ export default function ConductorTaxis() {
       </div>
     )
   }
-  // ===========================================
+  // =========================================================================
 
   // ── PANTALLA LOGIN ────────────────────────────────────────
   if (!sesionVerificada) {
