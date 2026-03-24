@@ -10,6 +10,9 @@ export default function DirectorioTaxis() {
   const [gpsEstado, setGpsEstado] = useState('idle')
   const [sindicatos, setSindicatos] = useState([])
   const [error, setError] = useState(null)
+  // ===== MEJORA 1: Estado para coordenadas =====
+  const [coordenadas, setCoordenadas] = useState(null)
+  // =============================================
   const gpsTimeoutRef = useRef(null)
 
   const detectarUbicacion = () => {
@@ -30,6 +33,10 @@ export default function DirectorioTaxis() {
       async (position) => {
         clearTimeout(gpsTimeoutRef.current)
         const { latitude, longitude } = position.coords
+        
+        // ===== MEJORA 2: Guardar coordenadas =====
+        setCoordenadas({ lat: latitude, lng: longitude })
+        // =========================================
 
         try {
           const cercanos = await getAsociacionesCercanas(latitude, longitude, 'taxi')
@@ -105,14 +112,16 @@ export default function DirectorioTaxis() {
                     📍 A {s.distancia_metros === 0 ? 'menos de 100' : s.distancia_metros} metros
                   </span>
                 </div>
+                {/* ===== MEJORA 3: Pasar coordenadas al navegar ===== */}
                 <button
                   className="directorio-btn-elegir"
                   onClick={() => navigate(`/taxi/${ciudad}/${s.asociacion_id}`, {
-                    state: { sindicato: s }
+                    state: { sindicato: s, coordenadas: coordenadas }
                   })}
                 >
                   Elegir →
                 </button>
+                {/* ================================================= */}
               </div>
             ))}
           </>

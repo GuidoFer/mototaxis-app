@@ -29,6 +29,7 @@ export default function SindicatoDetalle() {
   const navigate = useNavigate()
 
   const sindicato = state?.sindicato
+  const coordenadas = state?.coordenadas
 
   const [modo, setModo] = useState(null)
   const [referenciaOrigen, setReferenciaOrigen] = useState('')
@@ -87,6 +88,8 @@ export default function SindicatoDetalle() {
         tipo_servicio: 'normal',
         referencia_origen: referenciaOrigen.trim(),
         destino_referencia: destinoTexto.trim(),
+        lat_pasajero: coordenadas?.lat || '',
+        lng_pasajero: coordenadas?.lng || '',
         lat_destino: destinoCoordenadas?.lat || '',
         lng_destino: destinoCoordenadas?.lng || '',
       })
@@ -226,7 +229,7 @@ export default function SindicatoDetalle() {
                   onClick={() => setMostrarMapa(true)}
                   title="Marcar en mapa"
                 >
-                  📍
+                  📍Mapa
                 </button>
               </div>
             </div>
