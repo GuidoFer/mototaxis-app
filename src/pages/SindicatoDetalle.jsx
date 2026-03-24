@@ -1,7 +1,27 @@
 import { useState } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet'
+import L from 'leaflet'
 import { crearViaje } from '../services/api'
 import '../styles/SindicatoDetalle.css'
+import 'leaflet/dist/leaflet.css'
+
+// Fix icono default de Leaflet
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+})
+
+function SelectorMapa({ onSeleccionar }) {
+  useMapEvents({
+    click(e) {
+      onSeleccionar({ lat: e.latlng.lat, lng: e.latlng.lng })
+    }
+  })
+  return null
+}
 
 export default function SindicatoDetalle() {
   const { ciudad, asociacionId } = useParams()
@@ -10,9 +30,12 @@ export default function SindicatoDetalle() {
 
   const sindicato = state?.sindicato
 
-  const [modo, setModo] = useState(null) // null | 'formulario'
+  const [modo, setModo] = useState(null)
   const [referenciaOrigen, setReferenciaOrigen] = useState('')
-  const [destinoReferencia, setDestinoReferencia] = useState('')
+  const [destinoTexto, setDestinoTexto] = useState('')
+  const [destinoCoordenadas, setDestinoCoordenadas] = useState(null)
+  const [mostrarMapa, setMostrarMapa] = useState(false)
+  const [marcadorDestino, setMarcadorDestino] = useState(null)
   const [celularPasajero, setCelularPasajero] = useState('')
   const [cargando, setCargando] = useState(false)
   const [mensaje, setMensaje] = useState(null)
@@ -35,13 +58,25 @@ export default function SindicatoDetalle() {
     window.open(`https://wa.me/${numero}`, '_blank')
   }
 
+  const handleSeleccionarDestino = (coords) => {
+    setMarcadorDestino(coords)
+    setDestinoCoordenadas(coords)
+    setDestinoTexto('Destino marcado en mapa ✅')
+  }
+
+  const handleConfirmarMapa = () => {
+    if (!marcadorDestino) return setMensaje({ tipo: 'error', texto: 'Toca el mapa para marcar tu destino.' })
+    setMostrarMapa(false)
+    setMensaje(null)
+  }
+
   const handleSolicitar = async () => {
     setMensaje(null)
 
     const celular = celularPasajero.replace(/\D/g, '')
     if (celular.length < 8) return setMensaje({ tipo: 'error', texto: 'Número de celular inválido.' })
     if (!referenciaOrigen.trim()) return setMensaje({ tipo: 'error', texto: 'Ingresa tu referencia de ubicación.' })
-    if (!destinoReferencia.trim()) return setMensaje({ tipo: 'error', texto: 'Ingresa tu destino.' })
+    if (!destinoTexto.trim()) return setMensaje({ tipo: 'error', texto: 'Ingresa tu destino o márcalo en el mapa.' })
 
     setCargando(true)
     try {
@@ -51,7 +86,9 @@ export default function SindicatoDetalle() {
         tipo_vehiculo: 'taxi',
         tipo_servicio: 'normal',
         referencia_origen: referenciaOrigen.trim(),
-        destino_referencia: destinoReferencia.trim(),
+        destino_referencia: destinoTexto.trim(),
+        lat_destino: destinoCoordenadas?.lat || '',
+        lng_destino: destinoCoordenadas?.lng || '',
       })
       setSolicitudExitosa(resultado)
     } catch (err) {
@@ -61,6 +98,44 @@ export default function SindicatoDetalle() {
     }
   }
 
+  // ── PANTALLA MAPA ─────────────────────────────────────────
+  if (mostrarMapa) {
+    return (
+      <div className="sinddetalle-app">
+        <div className="sinddetalle-header">
+          <button className="sinddetalle-btn-volver" onClick={() => setMostrarMapa(false)}>
+            ← Volver
+          </button>
+          <h1 className="sinddetalle-titulo">Marca tu destino</h1>
+        </div>
+        <p className="sinddetalle-mapa-instruccion">Toca el mapa para marcar tu destino</p>
+        <div className="sinddetalle-mapa-container">
+          <MapContainer
+            center={[sindicato.lat || -16.5009, sindicato.lng || -68.1593]}
+            zoom={14}
+            style={{ height: '100%', width: '100%' }}
+          >
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='© OpenStreetMap'
+            />
+            <SelectorMapa onSeleccionar={handleSeleccionarDestino} />
+            {marcadorDestino && (
+              <Marker position={[marcadorDestino.lat, marcadorDestino.lng]} />
+            )}
+          </MapContainer>
+        </div>
+        <button
+          className="sinddetalle-btn-confirmar-mapa"
+          onClick={handleConfirmarMapa}
+        >
+          ✅ Confirmar destino
+        </button>
+      </div>
+    )
+  }
+
+  // ── PANTALLA ÉXITO ────────────────────────────────────────
   if (solicitudExitosa) {
     return (
       <div className="sinddetalle-app">
@@ -76,12 +151,9 @@ export default function SindicatoDetalle() {
           <p>Tu pedido fue enviado a {sindicato.asociacion_nombre}.</p>
           <div className="sinddetalle-codigo">{solicitudExitosa.codigo}</div>
           <p className="sinddetalle-exito-desc">
-            La operadora te contactará por WhatsApp con el precio y tiempo de llegada.
+            En 30 segundos verás las tarifas disponibles.
           </p>
-          <button
-            className="sinddetalle-btn-whatsapp"
-            onClick={handleLlamar}
-          >
+          <button className="sinddetalle-btn-whatsapp" onClick={handleLlamar}>
             💬 Abrir WhatsApp con {sindicato.asociacion_nombre}
           </button>
         </div>
@@ -89,6 +161,7 @@ export default function SindicatoDetalle() {
     )
   }
 
+  // ── FORMULARIO ────────────────────────────────────────────
   return (
     <div className="sinddetalle-app">
 
@@ -110,12 +183,10 @@ export default function SindicatoDetalle() {
         {modo === null && (
           <div className="sinddetalle-opciones">
             <p className="sinddetalle-subtitulo">¿Cómo quieres solicitar tu taxi?</p>
-
             <button className="sinddetalle-btn-llamar" onClick={handleLlamar}>
               📞 Llamar por WhatsApp
               <span className="sinddetalle-btn-sub">Habla directamente con la operadora</span>
             </button>
-
             <button className="sinddetalle-btn-formulario" onClick={() => setModo('formulario')}>
               📋 Solicitar por formulario
               <span className="sinddetalle-btn-sub">La operadora te contactará con el precio</span>
@@ -139,13 +210,25 @@ export default function SindicatoDetalle() {
 
             <div className="sinddetalle-campo">
               <label>¿A dónde vas?</label>
-              <input
-                className="sinddetalle-input"
-                type="text"
-                placeholder="Ej: Plaza Ballivián, Terminal"
-                value={destinoReferencia}
-                onChange={e => setDestinoReferencia(e.target.value)}
-              />
+              <div className="sinddetalle-destino-wrap">
+                <input
+                  className="sinddetalle-input sinddetalle-input-destino"
+                  type="text"
+                  placeholder="Ej: Plaza Ballivián, Terminal"
+                  value={destinoTexto}
+                  onChange={e => {
+                    setDestinoTexto(e.target.value)
+                    setDestinoCoordenadas(null)
+                  }}
+                />
+                <button
+                  className="sinddetalle-btn-mapa-pequeno"
+                  onClick={() => setMostrarMapa(true)}
+                  title="Marcar en mapa"
+                >
+                  📍
+                </button>
+              </div>
             </div>
 
             <div className="sinddetalle-campo">
@@ -173,10 +256,7 @@ export default function SindicatoDetalle() {
               onClick={handleSolicitar}
               disabled={cargando}
             >
-              {cargando
-                ? 'Enviando...'
-                : '🚕 Enviar solicitud'
-              }
+              {cargando ? 'Enviando...' : '🚕 Enviar solicitud'}
             </button>
 
             <button

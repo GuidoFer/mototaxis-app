@@ -73,6 +73,9 @@ export const getViaje = (codigo) =>
 export const getAsociacionesCercanas = (lat, lng, tipo = null) =>
   apiGet({ get: 'asociaciones_cercanas', lat, lng, ...(tipo && { tipo }) })
 
+export const getOfertasViaje = (codigo) =>
+  apiGet({ get: 'ofertas_viaje', codigo })
+
 export const crearViaje = (datos) =>
   apiPost({ action: 'crearViaje', ...datos });
 
@@ -112,3 +115,9 @@ export const completarViaje = (codigo, tarifaFinal, sheetIdConductor) =>
 
 export const verificarConductor = (celular, pin) =>
   apiGet({ get: 'verificar_conductor', celular, pin })
+
+export const enviarOferta = (codigoViaje, conductorId, asociacionId, tarifa) =>
+  apiPost({ action: 'enviarOferta', codigo_viaje: codigoViaje, conductor_id: conductorId, asociacion_id: asociacionId, tarifa_ofertada: tarifa })
+
+export const elegirOferta = (codigoViaje, conductorId) =>
+  apiPost({ action: 'elegirOferta', codigo_viaje: codigoViaje, conductor_id: conductorId })
