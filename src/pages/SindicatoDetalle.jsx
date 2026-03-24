@@ -25,23 +25,27 @@ function SelectorMapa({ onSeleccionar }) {
 
 function OfertasScreen({ solicitud, sindicato, ciudad, onLlamar, onVolver }) {
   const navigate = useNavigate()
-  const [segundos, setSegundos] = useState(30)
+  const [segundos, setSegundos] = useState(90)
   const [ofertas, setOfertas] = useState([])
   const [cargandoOfertas, setCargandoOfertas] = useState(false)
   const [elegida, setElegida] = useState(null)
   const [eligiendo, setEligiendo] = useState(false)
   const [mensaje, setMensaje] = useState(null)
 
-  // Countdown 30 segundos
+  // Countdown 90 segundos
   useEffect(() => {
     if (segundos <= 0) return
     const timer = setTimeout(() => setSegundos(s => s - 1), 1000)
     return () => clearTimeout(timer)
   }, [segundos])
 
-  // Cuando llega a 0 carga ofertas
+  // Polling cada 10 segundos mientras corre el countdown
   useEffect(() => {
-    if (segundos === 0) {
+    if (segundos <= 0) {
+      cargarOfertas()
+      return
+    }
+    if (segundos % 10 === 0) {
       cargarOfertas()
     }
   }, [segundos])
@@ -49,7 +53,6 @@ function OfertasScreen({ solicitud, sindicato, ciudad, onLlamar, onVolver }) {
   const cargarOfertas = async () => {
     setCargandoOfertas(true)
     try {
-      const { getOfertasViaje } = await import('../services/api')
       const data = await getOfertasViaje(solicitud.codigo)
       setOfertas(data)
     } catch (err) {
@@ -62,7 +65,6 @@ function OfertasScreen({ solicitud, sindicato, ciudad, onLlamar, onVolver }) {
   const handleElegir = async (oferta) => {
     setEligiendo(true)
     try {
-      const { elegirOferta } = await import('../services/api')
       await elegirOferta(solicitud.codigo, oferta.conductor_id)
       setElegida(oferta)
     } catch (err) {
@@ -108,25 +110,52 @@ function OfertasScreen({ solicitud, sindicato, ciudad, onLlamar, onVolver }) {
           {solicitud.codigo}
         </div>
 
+        {/* COUNTDOWN */}
         {segundos > 0 && (
           <div className="ofertas-esperando">
-            <div className="ofertas-countdown">{segundos}</div>
-            <p>Esperando las mejores tarifas</p>
-            <div className="buscando-indicator">
-              <span className="buscando-dot" />
-              <span className="buscando-dot" />
-              <span className="buscando-dot" />
+            <div className="ofertas-emoji">
+              {segundos > 75 ? '😊' : segundos > 55 ? '🙂' : segundos > 35 ? '😐' : segundos > 15 ? '😑' : '😒'}
             </div>
+            <div className="ofertas-countdown">{segundos}</div>
+            <p>Esperando las mejores tarifas...</p>
+            {ofertas.length === 0 && (
+              <div className="buscando-indicator">
+                <span className="buscando-dot" />
+                <span className="buscando-dot" />
+                <span className="buscando-dot" />
+              </div>
+            )}
           </div>
         )}
 
-        {segundos === 0 && cargandoOfertas && (
-          <div className="ofertas-esperando">
-            <p>Cargando ofertas...</p>
-          </div>
+        {/* OFERTAS EN TIEMPO REAL */}
+        {ofertas.length > 0 && (
+          <>
+            <p className="sinddetalle-subtitulo">
+              {segundos > 0 ? `${ofertas.length} oferta${ofertas.length > 1 ? 's' : ''} recibida${ofertas.length > 1 ? 's' : ''}` : 'Elige tu tarifa'}
+            </p>
+            {ofertas.map((oferta, idx) => (
+              <div key={oferta.conductor_id} className="oferta-card">
+                <div className="oferta-info">
+                  <span className="oferta-label">
+                    {idx === 0 ? '🏆 Mejor precio' : idx === 1 ? '2da opción' : '3ra opción'}
+                  </span>
+                  <span className="oferta-tarifa">Bs. {oferta.tarifa}</span>
+                </div>
+                <button
+                  className="sinddetalle-btn-elegir"
+                  onClick={() => handleElegir(oferta)}
+                  disabled={eligiendo}
+                >
+                  {eligiendo ? '...' : 'Elegir'}
+                </button>
+              </div>
+            ))}
+          </>
         )}
 
-        {segundos === 0 && !cargandoOfertas && ofertas.length === 0 && (
+        {/* SIN OFERTAS AL TERMINAR */}
+        {segundos === 0 && ofertas.length === 0 && !cargandoOfertas && (
           <div className="ofertas-sin-resultados">
             <div className="sinddetalle-exito-icon">😕</div>
             <h3>Sin conductores disponibles</h3>
@@ -140,33 +169,10 @@ function OfertasScreen({ solicitud, sindicato, ciudad, onLlamar, onVolver }) {
           </div>
         )}
 
-        {segundos === 0 && !cargandoOfertas && ofertas.length > 0 && (
-          <>
-            <p className="sinddetalle-subtitulo">Elige tu tarifa</p>
-            {ofertas.map((oferta, idx) => (
-              <div key={oferta.conductor_id} className="oferta-card">
-                <div className="oferta-info">
-                  <span className="oferta-label">
-                    {idx === 0 ? '🏆 Mejor precio' : '2da opción'}
-                  </span>
-                  <span className="oferta-tarifa">Bs. {oferta.tarifa}</span>
-                </div>
-                <button
-                  className="sinddetalle-btn-elegir"
-                  onClick={() => handleElegir(oferta)}
-                  disabled={eligiendo}
-                >
-                  {eligiendo ? '...' : 'Elegir'}
-                </button>
-              </div>
-            ))}
-
-            {mensaje && (
-              <div className={`sinddetalle-mensaje ${mensaje.tipo}`}>
-                {mensaje.texto}
-              </div>
-            )}
-          </>
+        {mensaje && (
+          <div className={`sinddetalle-mensaje ${mensaje.tipo}`}>
+            {mensaje.texto}
+          </div>
         )}
 
       </div>
