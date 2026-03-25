@@ -202,7 +202,7 @@ export default function ConductorTaxis() {
       tocar(880, 0.5, 0.2)
       tocar(1100, 0.75, 0.2)
     } catch (e) {
-      console.log('error audio:', e)
+      
     }
   }
 
@@ -666,7 +666,7 @@ export default function ConductorTaxis() {
 
                     {/* BOTONES MAPS */}
                     <div className="viaje-maps-btns">
-                      {console.log('maps data:', viaje.codigo, viaje.lat_pasajeros, viaje.lng_pasajeros, viaje.lat_destino, viaje.lng_destino)}
+                      
                       {viaje.lat_pasajeros && viaje.lng_pasajeros && (
                         <button
                           className="btn-maps"
