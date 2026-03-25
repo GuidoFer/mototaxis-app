@@ -179,7 +179,9 @@ export default function ConductorTaxis() {
 
   // ── ALARMA ────────────────────────────────────────────────
   const sonarAlarma = (silenciada = alarmaSilenciada) => {
+    console.log('sonarAlarma - audioActivado:', audioActivado, 'silenciada:', silenciada)
     if (!audioActivado || silenciada) return
+    console.log('sonando...')
     if (navigator.vibrate) navigator.vibrate([500, 300, 500, 300, 500])
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)()
@@ -200,17 +202,18 @@ export default function ConductorTaxis() {
       tocar(1100, 0.25, 0.2)
       tocar(880, 0.5, 0.2)
       tocar(1100, 0.75, 0.2)
-    } catch (e) {}
+    } catch (e) { console.log('error audio:', e) }
   }
 
   const iniciarAlarma = () => {
+    console.log('iniciarAlarma llamada - audioActivado:', audioActivado)
     setAlarmaSilenciada(false)
-    sonarAlarma(false) // pasar false directamente
+    sonarAlarma(false)
     let reps = 0
     alarmaIntervalRef.current = setInterval(() => {
       reps++
       if (reps >= 60) { detenerAlarma(); return }
-      sonarAlarma() // aquí ya usa el estado actualizado
+      sonarAlarma()
     }, 2000)
   }
 
