@@ -52,6 +52,7 @@ export default function ConductorTaxis() {
   const alarmaIntervalRef = useRef(null)
   const viajesAnterioresRef = useRef([])
   const intervaloRef = useRef(null)
+  const audioActivadoRef = useRef(false) // ===== REF PARA EVITAR CLOSURE =====
 
   // ===== Recuperar viajes ignorados de localStorage =====
   useEffect(() => {
@@ -179,9 +180,7 @@ export default function ConductorTaxis() {
 
   // ── ALARMA ────────────────────────────────────────────────
   const sonarAlarma = (silenciada = alarmaSilenciada) => {
-    console.log('sonarAlarma - audioActivado:', audioActivado, 'silenciada:', silenciada)
-    if (!audioActivado || silenciada) return
-    console.log('sonando...')
+    if (!audioActivadoRef.current || silenciada) return
     if (navigator.vibrate) navigator.vibrate([500, 300, 500, 300, 500])
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)()
@@ -202,11 +201,12 @@ export default function ConductorTaxis() {
       tocar(1100, 0.25, 0.2)
       tocar(880, 0.5, 0.2)
       tocar(1100, 0.75, 0.2)
-    } catch (e) { console.log('error audio:', e) }
+    } catch (e) {
+      console.log('error audio:', e)
+    }
   }
 
   const iniciarAlarma = () => {
-    console.log('iniciarAlarma llamada - audioActivado:', audioActivado)
     setAlarmaSilenciada(false)
     sonarAlarma(false)
     let reps = 0
@@ -239,6 +239,7 @@ export default function ConductorTaxis() {
       osc.stop(ctx.currentTime + 0.1)
       ctx.close()
     } catch (e) {}
+    audioActivadoRef.current = true
     setAudioActivado(true)
     mostrarToast('exito', '🔔 Alarma de pedidos activada')
   }
