@@ -232,8 +232,9 @@ export default function SindicatoDetalle() {
     setMensaje(null)
 
     const celular = celularPasajero.replace(/\D/g, '')
-    if (celular.length < 8) return setMensaje({ tipo: 'error', texto: 'Número de celular inválido.' })
-    if (!referenciaOrigen.trim()) return setMensaje({ tipo: 'error', texto: 'Ingresa tu referencia de ubicación.' })
+    if (celular.length !== 8) return setMensaje({ tipo: 'error', texto: 'El número debe tener exactamente 8 dígitos.' })
+    if (!['6', '7'].includes(celular[0])) return setMensaje({ tipo: 'error', texto: 'El número debe comenzar con 6 o 7.' })
+    if (!referenciaOrigen.trim()) return setMensaje({ tipo: 'error', texto: 'Ingresa una referencia.' })
     if (!destinoTexto.trim()) return setMensaje({ tipo: 'error', texto: 'Ingresa tu destino o márcalo en el mapa.' })
 
     setCargando(true)
