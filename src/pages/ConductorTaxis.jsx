@@ -383,6 +383,7 @@ export default function ConductorTaxis() {
       }
       const msg = encodeURIComponent(
         `🚕 ¡Hola! Soy tu conductor.\n\n` +
+        `🔖 Código: ${ofertaAceptada.codigo}\n` +
         `👤 ${conductor?.nombre || 'Conductor'}\n` +
         `🚗 ${conductor?.modelo_vehiculo || 'Taxi'} — ${conductor?.color_vehiculo || ''}\n` +
         `🔖 Placa: ${conductor?.placa || ''}\n` +
@@ -648,7 +649,7 @@ export default function ConductorTaxis() {
                       <div className="viaje-fila">
                         <span className="viaje-fila-icon">📍</span>
                         <span className="viaje-fila-texto">
-                          <strong>Origen:</strong> {viaje.referencia_origen}
+                          <strong>Referencia:</strong> {viaje.referencia_origen}
                         </span>
                       </div>
                       <div className="viaje-fila">

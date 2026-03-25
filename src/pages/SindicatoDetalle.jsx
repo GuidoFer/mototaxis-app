@@ -159,12 +159,12 @@ function OfertasScreen({ solicitud, sindicato, ciudad, onLlamar, onVolver }) {
           <div className="ofertas-sin-resultados">
             <div className="sinddetalle-exito-icon">😕</div>
             <h3>Sin conductores disponibles</h3>
-            <p>Ningún conductor envió una oferta. Puedes llamar directamente o buscar otro sindicato.</p>
+            <p>Ningún conductor envió una oferta. Puedes llamar directamente o buscar otro taxi movil.</p>
             <button className="sinddetalle-btn-llamar" onClick={onLlamar}>
               📞 Llamar por WhatsApp
             </button>
             <button className="sinddetalle-btn-cancelar-modo" onClick={onVolver}>
-              Ver otros sindicatos
+              Ver otros taxi movil
             </button>
           </div>
         )}
@@ -349,7 +349,7 @@ export default function SindicatoDetalle() {
               <input
                 className="sinddetalle-input"
                 type="text"
-                placeholder="Ej: Porton de madera, Edificio Azul, Hay un arbol"
+                placeholder="Ej: Garaje rojo, Edificio Azul, Hay un arbol"
                 value={referenciaOrigen}
                 onChange={e => setReferenciaOrigen(e.target.value)}
               />
@@ -385,7 +385,7 @@ export default function SindicatoDetalle() {
                 type="tel"
                 placeholder="Ej: 70000000"
                 value={celularPasajero}
-                onChange={e => setCelularPasajero(e.target.value)}
+                onChange={e => setCelularPasajero(e.target.value.replace(/\D/g, ''))}
               />
               {celularPasajero.replace(/\D/g, '').length >= 8 && (
                 <p className="sinddetalle-confirmacion">
