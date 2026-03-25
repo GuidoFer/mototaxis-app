@@ -250,6 +250,7 @@ export default function SindicatoDetalle() {
         lng_pasajero: coordenadas?.lng || '',
         lat_destino: destinoCoordenadas?.lat || '',
         lng_destino: destinoCoordenadas?.lng || '',
+        origen: 'app',
       })
       setSolicitudExitosa(resultado)
     } catch (err) {

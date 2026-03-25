@@ -251,6 +251,22 @@ export default function ConductorTaxis() {
     try {
       const todos = await getViajesHoy(conductor.asociacion_id)
 
+      // Verificar si hay un viaje asignado directamente por operadora
+      const miViajeAsignado = todos.find(v =>
+        v.estado === 'asignado' &&
+        v.conductor_id === conductor.id &&
+        v.tipo_vehiculo === 'taxi'
+      )
+
+      if (miViajeAsignado && !ofertaAceptada) {
+        setOfertaAceptada({
+          ...miViajeAsignado,
+          tarifa: parseFloat(miViajeAsignado.tarifa_final) || parseFloat(miViajeAsignado.tarifa_base) || 0
+        })
+        setOfertaEnviada(null)
+        cambiarEstado('ocupado')
+      }
+
       const pendientes = todos.filter(v =>
         v.estado === 'notificado' &&
         v.tipo_vehiculo === 'taxi' &&
@@ -266,7 +282,6 @@ export default function ConductorTaxis() {
       viajesAnterioresRef.current = pendientes
       setViajes(pendientes)
 
-      // Iniciar countdown para viajes nuevos
       setCountdowns(prev => {
         const nuevo = { ...prev }
         pendientes.forEach(v => {
@@ -283,7 +298,7 @@ export default function ConductorTaxis() {
     } finally {
       setCargandoViajes(false)
     }
-  }, [conductor, viajesIgnorados])
+  }, [conductor, viajesIgnorados, audioActivado, alarmaSilenciada, ofertaAceptada])
 
   // ── AUTO REFRESH ──────────────────────────────────────────
   useEffect(() => {

@@ -10,6 +10,7 @@ import SindicatoDetalle from './pages/SindicatoDetalle'
 // ===== MEJORA: Importar ConductorTaxis =====
 import ConductorTaxis from './pages/ConductorTaxis'
 // ===========================================
+import OperadoraPanel from './pages/OperadoraPanel'
 
 function App() {
   return (
@@ -33,6 +34,9 @@ function App() {
 
         {/* Conductor */}
         <Route path="/moto/conductor" element={<ConductorView />} />
+        
+        {/*Operadora*/}
+        <Route path="/taxi/:ciudad/operadora" element={<OperadoraPanel />} />
 
         {/* Inicio */}
         <Route
