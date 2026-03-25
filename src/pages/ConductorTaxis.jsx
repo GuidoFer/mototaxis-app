@@ -426,10 +426,10 @@ export default function ConductorTaxis() {
               </div>
             </div>
 
-            {ofertaAceptada.lat_pasajero && ofertaAceptada.lng_pasajero && (
+            {ofertaAceptada.lat_pasajeros && ofertaAceptada.lng_pasajeros && (
               <button
                 className="btn-maps"
-                onClick={() => verEnMaps(ofertaAceptada.lat_pasajero, ofertaAceptada.lng_pasajero)}
+                onClick={() => verEnMaps(ofertaAceptada.lat_pasajeros, ofertaAceptada.lng_pasajeros)}
               >
                 📍 Ver origen en Maps
               </button>
@@ -661,11 +661,11 @@ export default function ConductorTaxis() {
 
                     {/* BOTONES MAPS */}
                     <div className="viaje-maps-btns">
-                      {console.log('maps data:', viaje.codigo, viaje.lat_pasajero, viaje.lng_pasajero, viaje.lat_destino, viaje.lng_destino)}
-                      {viaje.lat_pasajero && viaje.lng_pasajero && (
+                      {console.log('maps data:', viaje.codigo, viaje.lat_pasajeros, viaje.lng_pasajeros, viaje.lat_destino, viaje.lng_destino)}
+                      {viaje.lat_pasajeros && viaje.lng_pasajeros && (
                         <button
                           className="btn-maps"
-                          onClick={() => verEnMaps(viaje.lat_pasajero, viaje.lng_pasajero)}
+                          onClick={() => verEnMaps(viaje.lat_pasajeros, viaje.lng_pasajeros)}
                         >
                           📍 Ver origen en Maps
                         </button>
