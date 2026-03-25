@@ -345,11 +345,11 @@ export default function SindicatoDetalle() {
           <div className="sinddetalle-formulario">
 
             <div className="sinddetalle-campo">
-              <label>¿En qué referencia estás?</label>
+              <label>Tengo tu ubicacion ¿Dame una referencia?</label>
               <input
                 className="sinddetalle-input"
                 type="text"
-                placeholder="Ej: Frente a la farmacia, cerca del mercado"
+                placeholder="Ej: Porton de madera, Edificio Azul, Hay un arbol"
                 value={referenciaOrigen}
                 onChange={e => setReferenciaOrigen(e.target.value)}
               />
@@ -361,7 +361,7 @@ export default function SindicatoDetalle() {
                 <input
                   className="sinddetalle-input sinddetalle-input-destino"
                   type="text"
-                  placeholder="Ej: Plaza Ballivián, Terminal"
+                  placeholder="Ej:Terminal de buses, Ceja calle 3, Aeropuerto"
                   value={destinoTexto}
                   onChange={e => {
                     setDestinoTexto(e.target.value)

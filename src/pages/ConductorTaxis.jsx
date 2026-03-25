@@ -661,6 +661,7 @@ export default function ConductorTaxis() {
 
                     {/* BOTONES MAPS */}
                     <div className="viaje-maps-btns">
+                      {console.log('maps data:', viaje.codigo, viaje.lat_pasajero, viaje.lng_pasajero, viaje.lat_destino, viaje.lng_destino)}
                       {viaje.lat_pasajero && viaje.lng_pasajero && (
                         <button
                           className="btn-maps"
