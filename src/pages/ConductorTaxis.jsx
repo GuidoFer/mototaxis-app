@@ -5,7 +5,8 @@ import {
   actualizarEstadoConductor,
   enviarOferta,
   getViajesHoy,
-  getViaje
+  getViaje,
+  completarViaje
 } from '../services/api'
 import '../styles/ConductorTaxis.css'
 
@@ -35,12 +36,13 @@ export default function ConductorTaxis() {
   const [actualizando, setActualizando] = useState(false)
 
   // ── OFERTA ────────────────────────────────────────────────
-  const [ofertaEnviada, setOfertaEnviada] = useState(null) // { codigo, tarifa }
+  const [ofertaEnviada, setOfertaEnviada] = useState(null)
   const [ofertaAceptada, setOfertaAceptada] = useState(null)
-  const [tarifas, setTarifas] = useState({}) // { codigo: valor }
-  const [countdowns, setCountdowns] = useState({}) // { codigo: segundos }
+  const [tarifas, setTarifas] = useState({})
+  const [countdowns, setCountdowns] = useState({})
   const [enviandoOferta, setEnviandoOferta] = useState(false)
-  const [tiempoLlegada, setTiempoLlegada] = useState('') // ✅ MOVIDO AQUÍ (fuera del condicional)
+  const [tiempoLlegada, setTiempoLlegada] = useState('')
+  const [completando, setCompletando] = useState(false)
 
   // ── ALARMA ────────────────────────────────────────────────
   const [audioActivado, setAudioActivado] = useState(false)
@@ -52,20 +54,25 @@ export default function ConductorTaxis() {
   const alarmaIntervalRef = useRef(null)
   const viajesAnterioresRef = useRef([])
   const intervaloRef = useRef(null)
-  const audioActivadoRef = useRef(false) // ===== REF PARA EVITAR CLOSURE =====
+  const audioActivadoRef = useRef(false)
+  // FIX — ref para evitar loop al detectar viaje asignado por operadora
+  const viajeAsignadoRefCodigo = useRef(null)
+  // FIX — ref para saber si el conductor completó el viaje manualmente
+  const viajeCompletadoRef = useRef(null)
 
-  // ===== Recuperar viajes ignorados de localStorage =====
+  // ── RECUPERAR VIAJES IGNORADOS ────────────────────────────
   useEffect(() => {
     const guardado = localStorage.getItem('conductorViajesIgnorados')
     if (guardado) {
-      try {
-        setViajesIgnorados(JSON.parse(guardado))
-      } catch (e) {
-        console.error('Error al cargar viajes ignorados:', e)
-      }
+      try { setViajesIgnorados(JSON.parse(guardado)) } catch (e) {}
     }
   }, [])
-  // ==========================================================
+
+  useEffect(() => {
+    if (viajesIgnorados.length > 0 || localStorage.getItem('conductorViajesIgnorados')) {
+      localStorage.setItem('conductorViajesIgnorados', JSON.stringify(viajesIgnorados))
+    }
+  }, [viajesIgnorados])
 
   // ── VERIFICAR SESIÓN ──────────────────────────────────────
   useEffect(() => {
@@ -99,28 +106,16 @@ export default function ConductorTaxis() {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [sesionVerificada])
 
-  // ===== Guardar viajes ignorados en localStorage =====
-  useEffect(() => {
-    if (viajesIgnorados.length > 0 || localStorage.getItem('conductorViajesIgnorados')) {
-      localStorage.setItem('conductorViajesIgnorados', JSON.stringify(viajesIgnorados))
-    }
-  }, [viajesIgnorados])
-  // ==========================================================
-
-  // ===== Polling para verificar si la oferta fue aceptada =====
+  // ── POLLING OFERTA ENVIADA ────────────────────────────────
   useEffect(() => {
     if (!ofertaEnviada || !conductor) return
-
     const polling = setInterval(async () => {
       try {
         const viaje = await getViaje(ofertaEnviada.codigo)
-
         if (viaje.estado === 'asignado' && viaje.conductor_id === conductor.id) {
           clearInterval(polling)
-          setOfertaAceptada({
-            ...viaje,
-            tarifa: ofertaEnviada.tarifa
-          })
+          viajeAsignadoRefCodigo.current = viaje.codigo
+          setOfertaAceptada({ ...viaje, tarifa: ofertaEnviada.tarifa })
           setOfertaEnviada(null)
           cambiarEstado('ocupado')
         } else if (viaje.estado === 'asignado' && viaje.conductor_id !== conductor.id) {
@@ -136,10 +131,8 @@ export default function ConductorTaxis() {
         console.log('Polling oferta error:', err)
       }
     }, 5000)
-
     return () => clearInterval(polling)
   }, [ofertaEnviada, conductor])
-  // =========================================================================
 
   // ── LOGIN ─────────────────────────────────────────────────
   const handleLogin = async () => {
@@ -169,6 +162,8 @@ export default function ConductorTaxis() {
     setOfertaEnviada(null)
     setOfertaAceptada(null)
     setTiempoLlegada('')
+    viajeAsignadoRefCodigo.current = null
+    viajeCompletadoRef.current = null
   }
 
   // ── TOAST ─────────────────────────────────────────────────
@@ -201,9 +196,7 @@ export default function ConductorTaxis() {
       tocar(1100, 0.25, 0.2)
       tocar(880, 0.5, 0.2)
       tocar(1100, 0.75, 0.2)
-    } catch (e) {
-      
-    }
+    } catch (e) {}
   }
 
   const iniciarAlarma = () => {
@@ -245,26 +238,31 @@ export default function ConductorTaxis() {
   }
 
   // ── CARGAR VIAJES ─────────────────────────────────────────
+  // FIX — ofertaAceptada eliminado de dependencias para evitar loop
   const cargarViajes = useCallback(async () => {
     if (!conductor) return
     setCargandoViajes(true)
     try {
       const todos = await getViajesHoy(conductor.asociacion_id)
 
-      // Verificar si hay un viaje asignado directamente por operadora
+      // FIX — detectar viaje asignado por operadora usando ref, no estado
       const miViajeAsignado = todos.find(v =>
         v.estado === 'asignado' &&
         v.conductor_id === conductor.id &&
         v.tipo_vehiculo === 'taxi'
       )
 
-      if (miViajeAsignado && !ofertaAceptada) {
+      if (
+        miViajeAsignado &&
+        viajeAsignadoRefCodigo.current !== miViajeAsignado.codigo &&
+        viajeCompletadoRef.current !== miViajeAsignado.codigo
+      ) {
+        viajeAsignadoRefCodigo.current = miViajeAsignado.codigo
         setOfertaAceptada({
           ...miViajeAsignado,
           tarifa: parseFloat(miViajeAsignado.tarifa_final) || parseFloat(miViajeAsignado.tarifa_base) || 0
         })
         setOfertaEnviada(null)
-        cambiarEstado('ocupado')
       }
 
       const pendientes = todos.filter(v =>
@@ -285,9 +283,7 @@ export default function ConductorTaxis() {
       setCountdowns(prev => {
         const nuevo = { ...prev }
         pendientes.forEach(v => {
-          if (!(v.codigo in nuevo)) {
-            nuevo[v.codigo] = COUNTDOWN_OFERTA
-          }
+          if (!(v.codigo in nuevo)) nuevo[v.codigo] = COUNTDOWN_OFERTA
         })
         return nuevo
       })
@@ -298,7 +294,8 @@ export default function ConductorTaxis() {
     } finally {
       setCargandoViajes(false)
     }
-  }, [conductor, viajesIgnorados, audioActivado, alarmaSilenciada, ofertaAceptada])
+  }, [conductor, viajesIgnorados, audioActivado, alarmaSilenciada])
+  // FIX — ofertaAceptada eliminado de dependencias
 
   // ── AUTO REFRESH ──────────────────────────────────────────
   useEffect(() => {
@@ -365,6 +362,27 @@ export default function ConductorTaxis() {
     }
   }
 
+  // ── COMPLETAR VIAJE ───────────────────────────────────────
+  // FIX — función completar que marca el viaje en Sheet y limpia el estado
+  const handleCompletar = async () => {
+    if (!ofertaAceptada || completando) return
+    setCompletando(true)
+    try {
+      await completarViaje(ofertaAceptada.codigo, ofertaAceptada.tarifa, conductor.sheet_id)
+      // FIX — guardar codigo en ref para que cargarViajes no lo vuelva a mostrar
+      viajeCompletadoRef.current = ofertaAceptada.codigo
+      viajeAsignadoRefCodigo.current = null
+      setOfertaAceptada(null)
+      setTiempoLlegada('')
+      cambiarEstado('disponible')
+      mostrarToast('exito', '✅ Viaje completado.')
+    } catch (err) {
+      mostrarToast('error', err.message)
+    } finally {
+      setCompletando(false)
+    }
+  }
+
   // ── MAPS ──────────────────────────────────────────────────
   const verEnMaps = (lat, lng) => {
     window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank')
@@ -390,7 +408,7 @@ export default function ConductorTaxis() {
     )
   }
 
-  // ===== PANTALLA OFERTA ACEPTADA (CORREGIDA - SIN useState DENTRO) =====
+  // ── PANTALLA OFERTA ACEPTADA ──────────────────────────────
   if (ofertaAceptada) {
     const celular = String(ofertaAceptada.celular_pasajero).replace(/\D/g, '')
     const celularWA = celular.startsWith('591') ? celular : `591${celular}`
@@ -426,7 +444,7 @@ export default function ConductorTaxis() {
         </div>
         <div className="conductortaxi-body">
           <div className="viaje-asignado-card">
-            <p className="viaje-asignado-titulo">✅ ¡Tu oferta fue aceptada!</p>
+            <p className="viaje-asignado-titulo">✅ ¡Viaje asignado!</p>
             <div className="viaje-datos">
               <div className="viaje-fila">
                 <span className="viaje-fila-icon">📍</span>
@@ -447,19 +465,12 @@ export default function ConductorTaxis() {
             </div>
 
             {ofertaAceptada.lat_pasajeros && ofertaAceptada.lng_pasajeros && (
-              <button
-                className="btn-maps"
-                onClick={() => verEnMaps(ofertaAceptada.lat_pasajeros, ofertaAceptada.lng_pasajeros)}
-              >
+              <button className="btn-maps" onClick={() => verEnMaps(ofertaAceptada.lat_pasajeros, ofertaAceptada.lng_pasajeros)}>
                 📍 Ver origen en Maps
               </button>
             )}
-
             {ofertaAceptada.lat_destino && ofertaAceptada.lng_destino && (
-              <button
-                className="btn-maps btn-maps-destino"
-                onClick={() => verEnMaps(ofertaAceptada.lat_destino, ofertaAceptada.lng_destino)}
-              >
+              <button className="btn-maps btn-maps-destino" onClick={() => verEnMaps(ofertaAceptada.lat_destino, ofertaAceptada.lng_destino)}>
                 🏁 Ver destino en Maps
               </button>
             )}
@@ -475,29 +486,22 @@ export default function ConductorTaxis() {
               />
             </div>
 
-            <button
-              className="btn-completar"
-              onClick={enviarWhatsApp}
-            >
+            <button className="btn-completar" onClick={enviarWhatsApp}>
               💬 Enviar mensaje al pasajero
             </button>
 
             <button
               className="btn-cancelar-viaje"
-              onClick={() => {
-                setOfertaAceptada(null)
-                setTiempoLlegada('')
-                cambiarEstado('disponible')
-              }}
+              onClick={handleCompletar}
+              disabled={completando}
             >
-              Marcar como completado
+              {completando ? 'Completando...' : '✅ Marcar como completado'}
             </button>
           </div>
         </div>
       </div>
     )
   }
-  // =========================================================================
 
   // ── PANTALLA LOGIN ────────────────────────────────────────
   if (!sesionVerificada) {
@@ -554,7 +558,6 @@ export default function ConductorTaxis() {
   // ── RENDER PRINCIPAL ──────────────────────────────────────
   return (
     <div className="conductortaxi-app">
-
       <div className="conductortaxi-header">
         <div className="conductortaxi-header-left">
           <span className="conductortaxi-header-icon">🚕</span>
@@ -570,7 +573,6 @@ export default function ConductorTaxis() {
       </div>
 
       <div className="conductortaxi-body">
-
         {toast && <div className={`mensaje-toast ${toast.tipo}`}>{toast.texto}</div>}
 
         {!audioActivado && (
@@ -579,7 +581,6 @@ export default function ConductorTaxis() {
           </button>
         )}
 
-        {/* DISPONIBILIDAD */}
         <div className="disponibilidad-section">
           <p className="seccion-titulo">Mi disponibilidad</p>
           <div className="toggle-disponibilidad">
@@ -600,7 +601,6 @@ export default function ConductorTaxis() {
           </div>
         </div>
 
-        {/* OFERTA ENVIADA — ESPERANDO RESPUESTA */}
         {ofertaEnviada && (
           <div className="oferta-enviada-card">
             <p className="oferta-enviada-titulo">⏳ Esperando respuesta del pasajero</p>
@@ -616,7 +616,6 @@ export default function ConductorTaxis() {
           </div>
         )}
 
-        {/* SOLICITUDES PENDIENTES */}
         {!ofertaEnviada && (
           <div className="viajes-section">
             <div className="viajes-header">
@@ -649,7 +648,6 @@ export default function ConductorTaxis() {
                 const tarifaActual = tarifas[viaje.codigo] || ''
                 return (
                   <div key={viaje.codigo} className="viaje-card">
-
                     <div className="viaje-card-header">
                       <span className="viaje-codigo">{viaje.codigo}</span>
                       <span className={`viaje-countdown ${segs <= 15 ? 'urgente' : ''}`}>
@@ -657,8 +655,7 @@ export default function ConductorTaxis() {
                       </span>
                     </div>
 
-                    {/* ALARMA SILENCIAR */}
-                    {audioActivado && !alarmaSilenciada && (
+                    {audioActivado && (
                       <button className="btn-silenciar" onClick={silenciarAlarma}>
                         {alarmaSilenciada ? '🔔 Alarma silenciada' : '🔕 Silenciar alarma'}
                       </button>
@@ -679,28 +676,19 @@ export default function ConductorTaxis() {
                       </div>
                     </div>
 
-                    {/* BOTONES MAPS */}
                     <div className="viaje-maps-btns">
-                      
                       {viaje.lat_pasajeros && viaje.lng_pasajeros && (
-                        <button
-                          className="btn-maps"
-                          onClick={() => verEnMaps(viaje.lat_pasajeros, viaje.lng_pasajeros)}
-                        >
+                        <button className="btn-maps" onClick={() => verEnMaps(viaje.lat_pasajeros, viaje.lng_pasajeros)}>
                           📍 Ver origen en Maps
                         </button>
                       )}
                       {viaje.lat_destino && viaje.lng_destino && (
-                        <button
-                          className="btn-maps btn-maps-destino"
-                          onClick={() => verEnMaps(viaje.lat_destino, viaje.lng_destino)}
-                        >
+                        <button className="btn-maps btn-maps-destino" onClick={() => verEnMaps(viaje.lat_destino, viaje.lng_destino)}>
                           🏁 Ver destino en Maps
                         </button>
                       )}
                     </div>
 
-                    {/* ENVIAR OFERTA */}
                     {segs > 0 && conductor.estado === 'disponible' && (
                       <div className="oferta-section">
                         <label className="oferta-label-input">Tu tarifa (Bs.)</label>
@@ -724,9 +712,7 @@ export default function ConductorTaxis() {
                       </div>
                     )}
 
-                    {segs === 0 && (
-                      <p className="oferta-expirada">⏰ Tiempo para ofertar expirado</p>
-                    )}
+                    {segs === 0 && <p className="oferta-expirada">⏰ Tiempo para ofertar expirado</p>}
 
                     {conductor.estado !== 'disponible' && (
                       <p style={{ fontSize: '0.75rem', color: '#666', textAlign: 'center' }}>
@@ -743,14 +729,12 @@ export default function ConductorTaxis() {
                     >
                       Ignorar
                     </button>
-
                   </div>
                 )
               })
             )}
           </div>
         )}
-
       </div>
     </div>
   )
