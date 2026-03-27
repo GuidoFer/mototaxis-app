@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
@@ -31,6 +31,7 @@ function OfertasScreen({ solicitud, sindicato, ciudad, onLlamar, onVolver }) {
   const [elegida, setElegida] = useState(null)
   const [eligiendo, setEligiendo] = useState(false)
   const [mensaje, setMensaje] = useState(null)
+  const ofertasAnterioresRef = useRef([])
 
   // Countdown 90 segundos
   useEffect(() => {
@@ -54,6 +55,31 @@ function OfertasScreen({ solicitud, sindicato, ciudad, onLlamar, onVolver }) {
     setCargandoOfertas(true)
     try {
       const data = await getOfertasViaje(solicitud.codigo)
+
+      // Detectar ofertas nuevas
+      const nuevas = data.filter(o =>
+        !ofertasAnterioresRef.current.find(ant => ant.conductor_id === o.conductor_id)
+      )
+
+      if (nuevas.length > 0) {
+        if (navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 500])
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)()
+          const osc = ctx.createOscillator()
+          const gain = ctx.createGain()
+          osc.connect(gain)
+          gain.connect(ctx.destination)
+          osc.type = 'sine'
+          osc.frequency.setValueAtTime(880, ctx.currentTime)
+          gain.gain.setValueAtTime(0.3, ctx.currentTime)
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5)
+          osc.start(ctx.currentTime)
+          osc.stop(ctx.currentTime + 0.5)
+          ctx.close()
+        } catch(e) {}
+      }
+
+      ofertasAnterioresRef.current = data
       setOfertas(data)
     } catch (err) {
       setMensaje({ tipo: 'error', texto: 'Error al cargar ofertas.' })
