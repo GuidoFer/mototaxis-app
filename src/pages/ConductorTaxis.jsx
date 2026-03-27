@@ -155,6 +155,10 @@ export default function ConductorTaxis() {
     setTiempoLlegada('')
     viajeAsignadoRefCodigo.current = null
     viajeCompletadoRef.current = null
+    // ===== RESETEAR ALARMA =====
+    alarmaSilenciadaRef.current = false
+    setAlarmaSilenciada(false)
+    // ============================
   }
 
   const mostrarToast = (tipo, texto) => {
@@ -368,6 +372,12 @@ export default function ConductorTaxis() {
 
   const handleCompletar = async () => {
     if (!ofertaAceptada || completando) return
+    
+    // ===== RESETEAR ALARMA =====
+    alarmaSilenciadaRef.current = false
+    setAlarmaSilenciada(false)
+    // ============================
+    
     setCompletando(true)
     try {
       await completarViaje(ofertaAceptada.codigo, ofertaAceptada.tarifa, conductor.sheet_id)
@@ -443,7 +453,6 @@ export default function ConductorTaxis() {
           <div className="viaje-asignado-card">
             <p className="viaje-asignado-titulo">✅ ¡Viaje asignado!</p>
 
-            {/* FIX — botón silenciar con clase dinámica y texto dinámico */}
             <button
               className={`btn-silenciar ${alarmaSilenciada ? 'silenciada' : ''}`}
               onClick={silenciarAlarma}
@@ -510,6 +519,12 @@ export default function ConductorTaxis() {
               onClick={async () => {
                 const confirmar = window.confirm('¿Cancelar este viaje? El pasajero será notificado.')
                 if (!confirmar) return
+                
+                // ===== RESETEAR ALARMA =====
+                alarmaSilenciadaRef.current = false
+                setAlarmaSilenciada(false)
+                // ============================
+                
                 try {
                   await cancelarSolicitud(ofertaAceptada.codigo, 'conductor')
                   viajeCompletadoRef.current = ofertaAceptada.codigo
