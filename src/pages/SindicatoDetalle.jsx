@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
-import { crearViaje, getOfertasViaje, elegirOferta } from '../services/api'
+import { crearViaje, getOfertasViaje, elegirOferta, cancelarSolicitud } from '../services/api'
 import '../styles/SindicatoDetalle.css'
 import 'leaflet/dist/leaflet.css'
 
@@ -200,7 +200,23 @@ function OfertasScreen({ solicitud, sindicato, ciudad, onLlamar, onVolver }) {
             {mensaje.texto}
           </div>
         )}
-
+        {/* BOTÓN CANCELAR */}
+        <button
+          className="sinddetalle-btn-cancelar-modo"
+          style={{ marginTop: '16px', color: '#e63946', borderColor: '#e63946' }}
+          onClick={async () => {
+            const confirmar = window.confirm('¿Cancelar tu solicitud de taxi?')
+            if (!confirmar) return
+            try {
+              await cancelarSolicitud(solicitud.codigo, 'pasajero')
+              onVolver()
+            } catch (err) {
+              setMensaje({ tipo: 'error', texto: 'Error al cancelar. Intenta de nuevo.' })
+            }
+          }}
+        >
+          ❌ Cancelar solicitud
+        </button>
       </div>
     </div>
   )
