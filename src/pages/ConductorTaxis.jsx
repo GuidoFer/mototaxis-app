@@ -431,9 +431,10 @@ export default function ConductorTaxis() {
         `👤 ${conductor?.nombre || 'Conductor'}\n` +
         `🚗 ${conductor?.modelo_vehiculo || 'Taxi'} — ${conductor?.color_vehiculo || ''}\n` +
         `🔖 Placa: ${conductor?.placa || ''}\n` +
+        `🏁 Destino: ${ofertaAceptada.destino_referencia || 'No especificado'}\n` +
         `💰 Tarifa acordada: Bs. ${ofertaAceptada.tarifa}\n` +
-        `⏱ Tiempo de llegada: ${tiempoLlegada} minutos\n\n` +
-        `Por favor espérame en tu ubicación. 📍`
+        `⏱ Paso a recogerte en: ${tiempoLlegada} minutos\n\n` +
+        `Responde OK y por favor espérame en tu ubicación. 📍`
       )
       window.open(`https://wa.me/${celularWA}?text=${msg}`, '_blank')
     }
