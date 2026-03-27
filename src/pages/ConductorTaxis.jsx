@@ -264,6 +264,7 @@ export default function ConductorTaxis() {
           tarifa: parseFloat(miViajeAsignado.tarifa_final) || parseFloat(miViajeAsignado.tarifa_base) || 0
         })
         setOfertaEnviada(null)
+        iniciarAlarma()
       }
 
       const pendientes = todos.filter(v =>
