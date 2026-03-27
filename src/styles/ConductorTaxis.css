@@ -670,3 +670,9 @@ body {
     flex-direction: column;
   }
 }
+
+.btn-silenciar.silenciada {
+  animation: none;
+  background: #333;
+  color: #888;
+}

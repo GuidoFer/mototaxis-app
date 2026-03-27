@@ -19,7 +19,6 @@ const COUNTDOWN_OFERTA = 90
 export default function ConductorTaxis() {
   const { ciudad } = useParams()
 
-  // ── LOGIN ─────────────────────────────────────────────────
   const [celularInput, setCelularInput] = useState('')
   const [pinInput, setPinInput] = useState('')
   const [verPin, setVerPin] = useState(false)
@@ -29,14 +28,12 @@ export default function ConductorTaxis() {
   const [conductor, setConductor] = useState(null)
   const [cargando, setCargando] = useState(true)
 
-  // ── VIAJES ────────────────────────────────────────────────
   const [viajes, setViajes] = useState([])
   const [viajesIgnorados, setViajesIgnorados] = useState([])
   const [cargandoViajes, setCargandoViajes] = useState(false)
   const [ultimoRefresh, setUltimoRefresh] = useState(null)
   const [actualizando, setActualizando] = useState(false)
 
-  // ── OFERTA ────────────────────────────────────────────────
   const [ofertaEnviada, setOfertaEnviada] = useState(null)
   const [ofertaAceptada, setOfertaAceptada] = useState(null)
   const [tarifas, setTarifas] = useState({})
@@ -45,7 +42,6 @@ export default function ConductorTaxis() {
   const [tiempoLlegada, setTiempoLlegada] = useState('')
   const [completando, setCompletando] = useState(false)
 
-  // ── ALARMA ────────────────────────────────────────────────
   const [audioActivado, setAudioActivado] = useState(false)
   const [alarmaSilenciada, setAlarmaSilenciada] = useState(false)
   const [toast, setToast] = useState(null)
@@ -56,14 +52,10 @@ export default function ConductorTaxis() {
   const viajesAnterioresRef = useRef([])
   const intervaloRef = useRef(null)
   const audioActivadoRef = useRef(false)
-  // FIX — ref para evitar loop al detectar viaje asignado por operadora
-  const viajeAsignadoRefCodigo = useRef(null)
-  // FIX — ref para saber si el conductor completó el viaje manualmente
-  const viajeCompletadoRef = useRef(null)
-  //Fix - Alarma de la operadora cuando asigna conductor
   const alarmaSilenciadaRef = useRef(false)
+  const viajeAsignadoRefCodigo = useRef(null)
+  const viajeCompletadoRef = useRef(null)
 
-  // ── RECUPERAR VIAJES IGNORADOS ────────────────────────────
   useEffect(() => {
     const guardado = localStorage.getItem('conductorViajesIgnorados')
     if (guardado) {
@@ -77,7 +69,6 @@ export default function ConductorTaxis() {
     }
   }, [viajesIgnorados])
 
-  // ── VERIFICAR SESIÓN ──────────────────────────────────────
   useEffect(() => {
     try {
       const sesionGuardada = localStorage.getItem('conductorTaxiSesion')
@@ -96,7 +87,6 @@ export default function ConductorTaxis() {
     setCargando(false)
   }, [])
 
-  // ── INTERCEPTAR BOTÓN ATRÁS ───────────────────────────────
   useEffect(() => {
     if (!sesionVerificada) return
     window.history.pushState(null, '', window.location.href)
@@ -109,7 +99,6 @@ export default function ConductorTaxis() {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [sesionVerificada])
 
-  // ── POLLING OFERTA ENVIADA ────────────────────────────────
   useEffect(() => {
     if (!ofertaEnviada || !conductor) return
     const polling = setInterval(async () => {
@@ -137,7 +126,6 @@ export default function ConductorTaxis() {
     return () => clearInterval(polling)
   }, [ofertaEnviada, conductor])
 
-  // ── LOGIN ─────────────────────────────────────────────────
   const handleLogin = async () => {
     setLoginError(null)
     if (!celularInput.trim()) return setLoginError('Ingresa tu número de celular.')
@@ -169,7 +157,6 @@ export default function ConductorTaxis() {
     viajeCompletadoRef.current = null
   }
 
-  // ── TOAST ─────────────────────────────────────────────────
   const mostrarToast = (tipo, texto) => {
     setToast({ tipo, texto })
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
@@ -177,6 +164,7 @@ export default function ConductorTaxis() {
   }
 
   // ── ALARMA ────────────────────────────────────────────────
+  // sonarAlarma: audio + vibración para pedidos por formulario
   const sonarAlarma = (silenciada = alarmaSilenciadaRef.current) => {
     if (!audioActivadoRef.current || silenciada) return
     if (navigator.vibrate) navigator.vibrate([500, 300, 500, 300, 500])
@@ -202,21 +190,37 @@ export default function ConductorTaxis() {
     } catch (e) {}
   }
 
-  const iniciarAlarma = () => {
+  // soloVibrar: para pedidos de operadora donde audio puede estar bloqueado
+  const soloVibrar = (silenciada = alarmaSilenciadaRef.current) => {
+    if (silenciada) return
+    if (navigator.vibrate) navigator.vibrate([1000, 300, 1000, 300, 1000, 300, 1000, 300, 1000])
+  }
+
+  const iniciarAlarma = (esOperadora = false) => {
+    detenerAlarma()
     alarmaSilenciadaRef.current = false
     setAlarmaSilenciada(false)
-    sonarAlarma(false)
+    if (esOperadora) {
+      soloVibrar(false)
+    } else {
+      sonarAlarma(false)
+    }
     let reps = 0
     alarmaIntervalRef.current = setInterval(() => {
       reps++
       if (reps >= 60) { detenerAlarma(); return }
-      sonarAlarma()
+      if (esOperadora) {
+        soloVibrar()
+      } else {
+        sonarAlarma()
+      }
     }, 2000)
   }
 
   const detenerAlarma = () => {
     if (alarmaIntervalRef.current) { clearInterval(alarmaIntervalRef.current); alarmaIntervalRef.current = null }
     if (audioCtxRef.current) { audioCtxRef.current.close(); audioCtxRef.current = null }
+    if (navigator.vibrate) navigator.vibrate(0)
   }
 
   const silenciarAlarma = () => {
@@ -242,15 +246,12 @@ export default function ConductorTaxis() {
     mostrarToast('exito', '🔔 Alarma de pedidos activada')
   }
 
-  // ── CARGAR VIAJES ─────────────────────────────────────────
-  // FIX — ofertaAceptada eliminado de dependencias para evitar loop
   const cargarViajes = useCallback(async () => {
     if (!conductor) return
     setCargandoViajes(true)
     try {
       const todos = await getViajesHoy(conductor.asociacion_id)
 
-      // FIX — detectar viaje asignado por operadora usando ref, no estado
       const miViajeAsignado = todos.find(v =>
         v.estado === 'asignado' &&
         v.conductor_id === conductor.id &&
@@ -263,13 +264,14 @@ export default function ConductorTaxis() {
         viajeCompletadoRef.current !== miViajeAsignado.codigo
       ) {
         viajeAsignadoRefCodigo.current = miViajeAsignado.codigo
-        console.log('viaje operadora detectado - audioActivadoRef:', audioActivadoRef.current, 'alarmaSilenciada:', alarmaSilenciada)
         setOfertaAceptada({
           ...miViajeAsignado,
           tarifa: parseFloat(miViajeAsignado.tarifa_final) || parseFloat(miViajeAsignado.tarifa_base) || 0
         })
         setOfertaEnviada(null)
-        iniciarAlarma()
+        if (!alarmaSilenciadaRef.current) {
+          iniciarAlarma(true) // esOperadora = true → solo vibra
+        }
       }
 
       const pendientes = todos.filter(v =>
@@ -281,8 +283,8 @@ export default function ConductorTaxis() {
 
       const codigosAnteriores = viajesAnterioresRef.current.map(v => v.codigo)
       const hayNuevo = pendientes.some(v => !codigosAnteriores.includes(v.codigo))
-      if (hayNuevo && pendientes.length > 0) iniciarAlarma()
-      else if (pendientes.length === 0) detenerAlarma()
+      if (hayNuevo && pendientes.length > 0) iniciarAlarma(false) // esOperadora = false → audio + vibración
+      else if (pendientes.length === 0 && !miViajeAsignado) detenerAlarma()
 
       viajesAnterioresRef.current = pendientes
       setViajes(pendientes)
@@ -302,9 +304,7 @@ export default function ConductorTaxis() {
       setCargandoViajes(false)
     }
   }, [conductor, viajesIgnorados, audioActivado, alarmaSilenciada])
-  // FIX — ofertaAceptada eliminado de dependencias
 
-  // ── AUTO REFRESH ──────────────────────────────────────────
   useEffect(() => {
     if (!conductor || !sesionVerificada) return
     cargarViajes()
@@ -313,7 +313,6 @@ export default function ConductorTaxis() {
     return () => clearInterval(intervaloRef.current)
   }, [conductor, sesionVerificada, cargarViajes, viajes.length])
 
-  // ── COUNTDOWNS ────────────────────────────────────────────
   useEffect(() => {
     const timer = setInterval(() => {
       setCountdowns(prev => {
@@ -327,7 +326,6 @@ export default function ConductorTaxis() {
     return () => clearInterval(timer)
   }, [])
 
-  // ── CAMBIAR ESTADO ────────────────────────────────────────
   const cambiarEstado = async (nuevoEstado) => {
     if (actualizando) return
     setActualizando(true)
@@ -345,7 +343,6 @@ export default function ConductorTaxis() {
     }
   }
 
-  // ── ENVIAR OFERTA ─────────────────────────────────────────
   const handleEnviarOferta = async (viaje) => {
     const tarifa = tarifas[viaje.codigo]
     if (!tarifa || isNaN(parseFloat(tarifa))) {
@@ -369,14 +366,11 @@ export default function ConductorTaxis() {
     }
   }
 
-  // ── COMPLETAR VIAJE ───────────────────────────────────────
-  // FIX — función completar que marca el viaje en Sheet y limpia el estado
   const handleCompletar = async () => {
     if (!ofertaAceptada || completando) return
     setCompletando(true)
     try {
       await completarViaje(ofertaAceptada.codigo, ofertaAceptada.tarifa, conductor.sheet_id)
-      // FIX — guardar codigo en ref para que cargarViajes no lo vuelva a mostrar
       viajeCompletadoRef.current = ofertaAceptada.codigo
       viajeAsignadoRefCodigo.current = null
       setOfertaAceptada(null)
@@ -390,12 +384,10 @@ export default function ConductorTaxis() {
     }
   }
 
-  // ── MAPS ──────────────────────────────────────────────────
   const verEnMaps = (lat, lng) => {
     window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank')
   }
 
-  // ── CLEANUP ───────────────────────────────────────────────
   useEffect(() => {
     return () => {
       if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current)
@@ -403,7 +395,6 @@ export default function ConductorTaxis() {
     }
   }, [])
 
-  // ── GUARDS ────────────────────────────────────────────────
   if (cargando) {
     return (
       <div className="conductortaxi-app">
@@ -415,7 +406,6 @@ export default function ConductorTaxis() {
     )
   }
 
-  // ── PANTALLA OFERTA ACEPTADA ──────────────────────────────
   if (ofertaAceptada) {
     const celular = String(ofertaAceptada.celular_pasajero).replace(/\D/g, '')
     const celularWA = celular.startsWith('591') ? celular : `591${celular}`
@@ -452,14 +442,15 @@ export default function ConductorTaxis() {
         <div className="conductortaxi-body">
           <div className="viaje-asignado-card">
             <p className="viaje-asignado-titulo">✅ ¡Viaje asignado!</p>
-            {audioActivado && (
-              <button className="btn-silenciar" onClick={() => {
-                detenerAlarma()
-                setAlarmaSilenciada(true)
-              }}>
-                🔕 Silenciar alarma
-              </button>
-            )}
+
+            {/* FIX — botón silenciar con clase dinámica y texto dinámico */}
+            <button
+              className={`btn-silenciar ${alarmaSilenciada ? 'silenciada' : ''}`}
+              onClick={silenciarAlarma}
+            >
+              {alarmaSilenciada ? '✅ Alarma desactivada' : '🔕 Detener alarma'}
+            </button>
+
             <div className="viaje-datos">
               <div className="viaje-fila">
                 <span className="viaje-fila-icon">📍</span>
@@ -512,6 +503,7 @@ export default function ConductorTaxis() {
             >
               {completando ? 'Completando...' : '✅ Marcar como completado'}
             </button>
+
             <button
               className="btn-cancelar-viaje"
               style={{ background: 'transparent', border: '1px solid #e63946', color: '#e63946', marginTop: '8px' }}
@@ -539,7 +531,6 @@ export default function ConductorTaxis() {
     )
   }
 
-  // ── PANTALLA LOGIN ────────────────────────────────────────
   if (!sesionVerificada) {
     return (
       <div className="conductortaxi-app">
@@ -591,7 +582,6 @@ export default function ConductorTaxis() {
     )
   }
 
-  // ── RENDER PRINCIPAL ──────────────────────────────────────
   return (
     <div className="conductortaxi-app">
       <div className="conductortaxi-header">
@@ -692,8 +682,11 @@ export default function ConductorTaxis() {
                     </div>
 
                     {audioActivado && (
-                      <button className="btn-silenciar" onClick={silenciarAlarma}>
-                        {alarmaSilenciada ? '🔔 Alarma silenciada' : '🔕 Silenciar alarma'}
+                      <button
+                        className={`btn-silenciar ${alarmaSilenciada ? 'silenciada' : ''}`}
+                        onClick={silenciarAlarma}
+                      >
+                        {alarmaSilenciada ? '✅ Alarma desactivada' : '🔕 Silenciar alarma'}
                       </button>
                     )}
 
