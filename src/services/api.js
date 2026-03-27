@@ -121,3 +121,9 @@ export const enviarOferta = (codigoViaje, conductorId, asociacionId, tarifa) =>
 
 export const elegirOferta = (codigoViaje, conductorId) =>
   apiPost({ action: 'elegirOferta', codigo_viaje: codigoViaje, conductor_id: conductorId })
+
+export const getViajePorToken = (token) =>
+  apiGet({ get: 'viaje_por_token', token })
+
+export const guardarUbicacionToken = (token, lat, lng) =>
+  apiPost({ action: 'guardarUbicacionToken', token, lat, lng })

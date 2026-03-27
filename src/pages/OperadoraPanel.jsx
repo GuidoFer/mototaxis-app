@@ -6,7 +6,8 @@ import {
   crearViaje,
   enviarOferta,
   elegirOferta,
-  getConductoresActivos
+  getConductoresActivos,
+  cancelarSolicitud
 } from '../services/api'
 import '../styles/OperadoraPanel.css'
 
@@ -71,6 +72,31 @@ export default function OperadoraPanel() {
     } catch (e) {}
     setCargando(false)
   }, [])
+
+  // ── INTERCEPTAR BOTÓN ATRÁS ───────────────────────────────
+  useEffect(() => {
+    if (!sesionVerificada) return
+    window.history.pushState(null, '', window.location.href)
+    const handlePopState = () => {
+      if (modoCrear) {
+        setModoCrear(false)
+        window.history.pushState(null, '', window.location.href)
+        return
+      }
+      if (solicitudSeleccionada) {
+        setSolicitudSeleccionada(null)
+        setConductoresDisponibles([])
+        setTarifaAsignar('')
+        window.history.pushState(null, '', window.location.href)
+        return
+      }
+      const confirmar = window.confirm('¿Deseas cerrar sesión y salir del panel?')
+      if (confirmar) cerrarSesion()
+      else window.history.pushState(null, '', window.location.href)
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [sesionVerificada, modoCrear, solicitudSeleccionada])
 
   // ── LOGIN ─────────────────────────────────────────────────
   const handleLogin = async () => {
@@ -156,12 +182,16 @@ export default function OperadoraPanel() {
     if (!formManual.referencia.trim()) return setMensajeForm({ tipo: 'error', texto: 'Ingresa la referencia del pasajero.' })
     if (!formManual.destino.trim()) return setMensajeForm({ tipo: 'error', texto: 'Ingresa el destino.' })
     if (formManual.tipo === 'whatsapp' && formManual.celular.replace(/\D/g, '').length < 8) {
-        return setMensajeForm({ tipo: 'error', texto: 'Ingresa el número de celular del pasajero.' })
+      return setMensajeForm({ tipo: 'error', texto: 'Ingresa el número de celular del pasajero.' })
     }
 
     setCreando(true)
     try {
-        const resultado = await crearViaje({
+      // ===== GENERAR TOKEN ÚNICO PARA UBICACIÓN =====
+      const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+      // ===============================================
+
+      const resultado = await crearViaje({
         celular_pasajero: formManual.celular.replace(/\D/g, '') || '00000000',
         uv_origen: operadora.asociacion_id,
         tipo_vehiculo: 'taxi',
@@ -169,29 +199,32 @@ export default function OperadoraPanel() {
         referencia_origen: formManual.referencia.trim(),
         destino_referencia: formManual.destino.trim(),
         origen: 'operadora',
-        estado_inicial: 'pendiente_operadora'
-        })
+        estado_inicial: 'pendiente_operadora',
+        token_ubicacion: token  // ← AGREGADO
+      })
 
-        mostrarToast('exito', `Solicitud ${resultado.codigo} creada.`)
-        setModoCrear(false)
-        setFormManual({ celular: '', referencia: '', destino: '', tipo: 'whatsapp' })
-        cargarSolicitudes()
+      mostrarToast('exito', `Solicitud ${resultado.codigo} creada.`)
+      setModoCrear(false)
+      setFormManual({ celular: '', referencia: '', destino: '', tipo: 'whatsapp' })
+      cargarSolicitudes()
 
-        if (formManual.tipo === 'whatsapp' && formManual.celular.replace(/\D/g, '').length >= 8) {
+      if (formManual.tipo === 'whatsapp' && formManual.celular.replace(/\D/g, '').length >= 8) {
         const celular = formManual.celular.replace(/\D/g, '')
         const celularWA = celular.startsWith('591') ? celular : `591${celular}`
         const msg = encodeURIComponent(
-            `🚕 Hola, recibimos tu solicitud de taxi.\n\n` +
-            `📋 Código de tu solicitud: ${resultado.codigo}\n` +
-            `Para recogerte, por favor comparte tu ubicación en tiempo real respondiendo a este mensaje.\n`
+          `🚕 Hola, recibimos tu solicitud de taxi.\n\n` +
+          `📋 Código: ${resultado.codigo}\n\n` +
+          `Para que podamos recogerte, comparte tu ubicación tocando este link:\n` +
+          `https://mototaxis-app.vercel.app/ubicacion/${token}\n\n` +
+          `Solo toca el link y presiona un botón. ¡Es muy fácil!`
         )
         window.open(`https://wa.me/${celularWA}?text=${msg}`, '_blank')
-        }
+      }
 
     } catch (err) {
-        setMensajeForm({ tipo: 'error', texto: err.message })
+      setMensajeForm({ tipo: 'error', texto: err.message })
     } finally {
-        setCreando(false)
+      setCreando(false)
     }
   }
 
@@ -557,13 +590,32 @@ export default function OperadoraPanel() {
 
               {['notificado', 'pendiente_operadora'].includes(s.estado) && (
                 <button
-                    className="btn-aceptar"
-                    onClick={() => {
+                  className="btn-aceptar"
+                  onClick={() => {
                     setSolicitudSeleccionada(s)
                     cargarConductoresDisponibles()
-                    }}
+                  }}
                 >
-                    👤 Asignar conductor
+                  👤 Asignar conductor
+                </button>
+              )}
+
+              {['notificado', 'pendiente_operadora'].includes(s.estado) && (
+                <button
+                  className="btn-cancelar-viaje"
+                  onClick={async () => {
+                    const confirmar = window.confirm(`¿Cancelar el viaje ${s.codigo}?`)
+                    if (!confirmar) return
+                    try {
+                      await cancelarSolicitud(s.codigo, 'conductor')
+                      mostrarToast('exito', 'Viaje cancelado.')
+                      cargarSolicitudes()
+                    } catch (err) {
+                      mostrarToast('error', err.message)
+                    }
+                  }}
+                >
+                  ❌ Cancelar
                 </button>
               )}
 

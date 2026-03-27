@@ -11,6 +11,8 @@ import SindicatoDetalle from './pages/SindicatoDetalle'
 import ConductorTaxis from './pages/ConductorTaxis'
 // ===========================================
 import OperadoraPanel from './pages/OperadoraPanel'
+// Ubicacion pasajero por token
+import UbicacionPasajero from './pages/UbicacionPasajero'
 
 function App() {
   return (
@@ -37,6 +39,9 @@ function App() {
         
         {/*Operadora*/}
         <Route path="/taxi/:ciudad/operadora" element={<OperadoraPanel />} />
+
+        {/*Ubicacion por token*/}
+        <Route path="/ubicacion/:token" element={<UbicacionPasajero />} />
 
         {/* Inicio */}
         <Route

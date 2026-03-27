@@ -6,7 +6,8 @@ import {
   enviarOferta,
   getViajesHoy,
   getViaje,
-  completarViaje
+  completarViaje,
+  cancelarSolicitud
 } from '../services/api'
 import '../styles/ConductorTaxis.css'
 
@@ -496,6 +497,27 @@ export default function ConductorTaxis() {
               disabled={completando}
             >
               {completando ? 'Completando...' : '✅ Marcar como completado'}
+            </button>
+            <button
+              className="btn-cancelar-viaje"
+              style={{ background: 'transparent', border: '1px solid #e63946', color: '#e63946', marginTop: '8px' }}
+              onClick={async () => {
+                const confirmar = window.confirm('¿Cancelar este viaje? El pasajero será notificado.')
+                if (!confirmar) return
+                try {
+                  await cancelarSolicitud(ofertaAceptada.codigo, 'conductor')
+                  viajeCompletadoRef.current = ofertaAceptada.codigo
+                  viajeAsignadoRefCodigo.current = null
+                  setOfertaAceptada(null)
+                  setTiempoLlegada('')
+                  cambiarEstado('disponible')
+                  mostrarToast('exito', 'Viaje cancelado.')
+                } catch (err) {
+                  mostrarToast('error', err.message)
+                }
+              }}
+            >
+              ❌ Cancelar viaje
             </button>
           </div>
         </div>

@@ -1,0 +1,115 @@
+.ubicacion-app {
+  background: #0a0a0a;
+  min-height: 100vh;
+  font-family: 'DM Sans', sans-serif;
+  color: #f5f2ec;
+}
+
+.ubicacion-header {
+  background: #111;
+  border-bottom: 1px solid #222;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ubicacion-header-icon { font-size: 2rem; }
+
+.ubicacion-header h1 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-family: 'Syne', sans-serif;
+}
+
+.ubicacion-header p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.ubicacion-body {
+  padding: 32px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ubicacion-estado {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  width: 100%;
+  max-width: 400px;
+}
+
+.ubicacion-icon { font-size: 4rem; }
+
+.ubicacion-estado h2 {
+  margin: 0;
+  font-family: 'Syne', sans-serif;
+  font-size: 1.4rem;
+}
+
+.ubicacion-estado p {
+  margin: 0;
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.ubicacion-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #333;
+  border-top: 3px solid #e85d04;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.ubicacion-viaje-info {
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  font-size: 0.88rem;
+}
+
+.ubicacion-btn {
+  background: #e85d04;
+  border: none;
+  border-radius: 14px;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-family: 'Syne', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 18px 16px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.ubicacion-btn-sub {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 400;
+  opacity: 0.85;
+}
+
+.ubicacion-error {
+  color: #e63946;
+  font-size: 0.85rem;
+}
