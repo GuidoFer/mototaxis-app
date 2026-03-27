@@ -60,6 +60,8 @@ export default function ConductorTaxis() {
   const viajeAsignadoRefCodigo = useRef(null)
   // FIX — ref para saber si el conductor completó el viaje manualmente
   const viajeCompletadoRef = useRef(null)
+  //Fix - Alarma de la operadora cuando asigna conductor
+  const alarmaSilenciadaRef = useRef(false)
 
   // ── RECUPERAR VIAJES IGNORADOS ────────────────────────────
   useEffect(() => {
@@ -175,7 +177,7 @@ export default function ConductorTaxis() {
   }
 
   // ── ALARMA ────────────────────────────────────────────────
-  const sonarAlarma = (silenciada = alarmaSilenciada) => {
+  const sonarAlarma = (silenciada = alarmaSilenciadaRef.current) => {
     if (!audioActivadoRef.current || silenciada) return
     if (navigator.vibrate) navigator.vibrate([500, 300, 500, 300, 500])
     try {
@@ -201,6 +203,7 @@ export default function ConductorTaxis() {
   }
 
   const iniciarAlarma = () => {
+    alarmaSilenciadaRef.current = false
     setAlarmaSilenciada(false)
     sonarAlarma(false)
     let reps = 0
@@ -218,6 +221,7 @@ export default function ConductorTaxis() {
 
   const silenciarAlarma = () => {
     detenerAlarma()
+    alarmaSilenciadaRef.current = true
     setAlarmaSilenciada(true)
   }
 
@@ -259,6 +263,7 @@ export default function ConductorTaxis() {
         viajeCompletadoRef.current !== miViajeAsignado.codigo
       ) {
         viajeAsignadoRefCodigo.current = miViajeAsignado.codigo
+        console.log('viaje operadora detectado - audioActivadoRef:', audioActivadoRef.current, 'alarmaSilenciada:', alarmaSilenciada)
         setOfertaAceptada({
           ...miViajeAsignado,
           tarifa: parseFloat(miViajeAsignado.tarifa_final) || parseFloat(miViajeAsignado.tarifa_base) || 0
@@ -447,6 +452,14 @@ export default function ConductorTaxis() {
         <div className="conductortaxi-body">
           <div className="viaje-asignado-card">
             <p className="viaje-asignado-titulo">✅ ¡Viaje asignado!</p>
+            {audioActivado && (
+              <button className="btn-silenciar" onClick={() => {
+                detenerAlarma()
+                setAlarmaSilenciada(true)
+              }}>
+                🔕 Silenciar alarma
+              </button>
+            )}
             <div className="viaje-datos">
               <div className="viaje-fila">
                 <span className="viaje-fila-icon">📍</span>
