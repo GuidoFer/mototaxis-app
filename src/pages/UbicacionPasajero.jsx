@@ -35,12 +35,16 @@ export default function UbicacionPasajero() {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords
+        console.log('coordenadas:', latitude, longitude)
+        console.log('token:', token)
         try {
-          await guardarUbicacionToken(token, latitude, longitude)
-          setEstado('completado')
+            const resultado = await guardarUbicacionToken(token, latitude, longitude)
+            console.log('resultado:', resultado)
+            setEstado('completado')
         } catch (err) {
-          setEstado('listo')
-          setMensaje('Error al guardar ubicación. Intenta de nuevo.')
+            console.log('error:', err.message)
+            setEstado('listo')
+            setMensaje('Error al guardar ubicación. Intenta de nuevo.')
         }
       },
       () => {
