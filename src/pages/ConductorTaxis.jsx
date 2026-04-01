@@ -7,7 +7,8 @@ import {
   getViajesHoy,
   getViaje,
   completarViaje,
-  cancelarSolicitud
+  cancelarSolicitud,
+  guardarFCMToken
 } from '../services/api'
 import { solicitarPermisoNotificaciones } from '../firebase'
 import '../styles/ConductorTaxis.css'
@@ -144,6 +145,8 @@ export default function ConductorTaxis() {
       if (tokenFCM) {
         console.log('Token FCM guardado:', tokenFCM)
         localStorage.setItem('conductorFCMToken', tokenFCM)
+        // Guardar en la Sheet
+        await guardarFCMToken(data.id, data.sheet_id, tokenFCM)
       }
     } catch (err) {
       setLoginError(err.message)
