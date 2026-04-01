@@ -9,6 +9,7 @@ import {
   completarViaje,
   cancelarSolicitud
 } from '../services/api'
+import { solicitarPermisoNotificaciones } from '../firebase'
 import '../styles/ConductorTaxis.css'
 
 const INTERVALO_BASE = 15000
@@ -137,6 +138,13 @@ export default function ConductorTaxis() {
       localStorage.setItem('conductorTaxiSesion', JSON.stringify(sesion))
       setConductor(data)
       setSesionVerificada(true)
+
+      // Solicitar permiso de notificaciones y guardar token
+      const tokenFCM = await solicitarPermisoNotificaciones()
+      if (tokenFCM) {
+        console.log('Token FCM guardado:', tokenFCM)
+        localStorage.setItem('conductorFCMToken', tokenFCM)
+      }
     } catch (err) {
       setLoginError(err.message)
     } finally {
