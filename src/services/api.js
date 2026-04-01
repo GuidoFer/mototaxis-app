@@ -127,3 +127,6 @@ export const getViajePorToken = (token) =>
 
 export const guardarUbicacionToken = (token, lat, lng) =>
   apiPost({ action: 'guardarUbicacionToken', token, lat, lng })
+
+export const guardarFCMToken = (conductorId, sheetId, token) =>
+  apiPost({ action: 'guardarFCMToken', conductor_id: conductorId, sheet_id: sheetId, token })
