@@ -54,5 +54,6 @@ messaging.onBackgroundMessage(payload => {
     icon: '/icons/icon-192.png',
     badge: '/icons/icon-72.png',
     vibrate: [500, 200, 500, 200, 500],
+    requireInteraction: true // mantiene la notificación visible
   })
 })
