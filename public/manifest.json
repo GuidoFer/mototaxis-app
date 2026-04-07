@@ -3,7 +3,7 @@
   "name": "PIDE",
   "short_name": "PIDE",
   "description": "Pide taxi y comida desde tu celular",
-  "start_url": "/",
+  "start_url": "/taxi/elalto",
   "scope": "/",
   "display": "standalone",
   "background_color": "#000000",
