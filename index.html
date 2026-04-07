@@ -7,8 +7,12 @@
     <title>PIDE</title>
     <meta name="description" content="Pide taxi y comida desde tu celular" />
     
-    <!-- PWA -->
-    <link rel="manifest" href="/manifest.json" />
+    <!-- PWA - Manifest dinámico según ruta -->
+    <script>
+      const esConductor = window.location.pathname.includes('/conductor');
+      const manifest = esConductor ? '/manifest-conductor.json' : '/manifest.json';
+      document.write('<link rel="manifest" href="' + manifest + '" />');
+    </script>
     <meta name="theme-color" content="#7B2FBE" />
     <meta name="mobile-web-app-capable" content="yes" />
     

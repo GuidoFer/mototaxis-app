@@ -3,69 +3,37 @@ import SolicitudViaje from './pages/SolicitudViaje'
 import SolicitudEncomienda from './pages/SolicitudEncomienda'
 import ConductorView from './pages/ConductorView'
 import CancelarViaje from './pages/CancelarViaje'
-
-// ✅ NUEVOS IMPORTS
 import DirectorioTaxis from './pages/DirectorioTaxis'
 import SindicatoDetalle from './pages/SindicatoDetalle'
-// ===== MEJORA: Importar ConductorTaxis =====
 import ConductorTaxis from './pages/ConductorTaxis'
-// ===========================================
 import OperadoraPanel from './pages/OperadoraPanel'
-// Ubicacion pasajero por token
 import UbicacionPasajero from './pages/UbicacionPasajero'
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-
-        {/* Pasajero */}
+        {/* Mototaxis */}
         <Route path="/moto/:ciudad" element={<SolicitudViaje />} />
         <Route path="/moto/encomienda/:ciudad" element={<SolicitudEncomienda />} />
-
-        {/* ✅ NUEVAS RUTAS TAXI */}
-        <Route path="/taxi/:ciudad" element={<DirectorioTaxis />} />
-        <Route path="/taxi/:ciudad/:asociacionId" element={<SindicatoDetalle />} />
-        
-        {/* ===== MEJORA: Ruta para conductor de taxi ===== */}
-        <Route path="/taxi/:ciudad/conductor" element={<ConductorTaxis />} />
-        {/* ============================================= */}
-
-        {/* Cancelación */}
-        <Route path="/cancelar/:codigo" element={<CancelarViaje />} />
-
-        {/* Conductor */}
         <Route path="/moto/conductor" element={<ConductorView />} />
-        
-        {/*Operadora*/}
-        <Route path="/taxi/:ciudad/operadora" element={<OperadoraPanel />} />
 
-        {/*Ubicacion por token*/}
+        {/* Taxis — rutas literales PRIMERO, dinámicas DESPUÉS */}
+        <Route path="/taxi/:ciudad" element={<DirectorioTaxis />} />
+        <Route path="/taxi/:ciudad/conductor" element={<ConductorTaxis />} />
+        <Route path="/taxi/:ciudad/operadora" element={<OperadoraPanel />} />
+        <Route path="/taxi/:ciudad/:asociacionId" element={<SindicatoDetalle />} />
+
+        {/* Otros */}
+        <Route path="/cancelar/:codigo" element={<CancelarViaje />} />
         <Route path="/ubicacion/:token" element={<UbicacionPasajero />} />
 
-        {/* Inicio */}
-        <Route
-          path="/"
-          element={
-            <div style={{ padding: 32, fontFamily: 'Arial' }}>
-              <h2>🏍️ Mototaxis API — OK</h2>
-              <ul>
-                <li>
-                  <a href="/moto/warnes">
-                    /moto/warnes — Solicitar viaje
-                  </a>
-                </li>
-
-                <li>
-                  <a href="/moto/conductor">
-                    /moto/conductor — Panel conductor
-                  </a>
-                </li>
-              </ul>
-            </div>
-          }
-        />
-
+        {/* Inicio limpio */}
+        <Route path="/" element={
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'Arial' }}>
+            <h2>PIDE</h2>
+          </div>
+        } />
       </Routes>
     </BrowserRouter>
   )
