@@ -12,7 +12,7 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging()
 
-const CACHE_NAME = 'pide-v1'
+const CACHE_NAME = 'pide-v2'
 const ARCHIVOS_CACHE = [
   '/',
   '/index.html',
@@ -45,15 +45,47 @@ self.addEventListener('fetch', event => {
   )
 })
 
-// Recibir notificaciones push en segundo plano
+// Manejar tanto notification messages como data messages
 messaging.onBackgroundMessage(payload => {
-  console.log('Notificación en segundo plano:', payload)
-  const { title, body } = payload.notification
+  console.log('Mensaje en segundo plano:', payload)
+
+  // Soportar data message y notification message
+  const title = (payload.notification && payload.notification.title) || (payload.data && payload.data.title) || '🚕 Nuevo pedido'
+  const body = (payload.notification && payload.notification.body) || (payload.data && payload.data.body) || 'Tienes una nueva solicitud'
+
   self.registration.showNotification(title, {
     body,
     icon: '/icons/icon-192.png',
     badge: '/icons/icon-72.png',
-    vibrate: [500, 200, 500, 200, 500],
-    requireInteraction: true // mantiene la notificación visible
+    vibrate: [500, 200, 500, 200, 500, 200, 500],
+    requireInteraction: true,
+    tag: 'pedido',
+    renotify: true
   })
+})
+
+// Manejar push directo (fallback si FCM no procesa)
+self.addEventListener('push', event => {
+  console.log('Push directo recibido:', event)
+  if (event.data) {
+    try {
+      const payload = event.data.json()
+      const title = (payload.notification && payload.notification.title) || (payload.data && payload.data.title) || '🚕 Nuevo pedido'
+      const body = (payload.notification && payload.notification.body) || (payload.data && payload.data.body) || 'Tienes una nueva solicitud'
+
+      event.waitUntil(
+        self.registration.showNotification(title, {
+          body,
+          icon: '/icons/icon-192.png',
+          badge: '/icons/icon-72.png',
+          vibrate: [500, 200, 500, 200, 500, 200, 500],
+          requireInteraction: true,
+          tag: 'pedido',
+          renotify: true
+        })
+      )
+    } catch(e) {
+      console.log('Error procesando push:', e)
+    }
+  }
 })
