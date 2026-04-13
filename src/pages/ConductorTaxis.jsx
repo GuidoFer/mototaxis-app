@@ -445,7 +445,7 @@ export default function ConductorTaxis() {
         `🏁 Destino: ${ofertaAceptada.destino_referencia || 'No especificado'}\n` +
         `💰 Tarifa acordada: Bs. ${ofertaAceptada.tarifa}\n` +
         `⏱ Paso a recogerte en: ${tiempoLlegada} minutos\n\n` +
-        `Responde OK y por favor espérame en tu ubicación. 📍`
+        `Responde OK y te enviare mi ubicación en tiempo real. 📍`
       )
       window.open(`https://wa.me/${celularWA}?text=${msg}`, '_blank')
     }
