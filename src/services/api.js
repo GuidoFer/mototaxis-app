@@ -116,8 +116,15 @@ export const completarViaje = (codigo, tarifaFinal, sheetIdConductor) =>
 export const verificarConductor = (celular, pin) =>
   apiGet({ get: 'verificar_conductor', celular, pin })
 
-export const enviarOferta = (codigoViaje, conductorId, asociacionId, tarifa) =>
-  apiPost({ action: 'enviarOferta', codigo_viaje: codigoViaje, conductor_id: conductorId, asociacion_id: asociacionId, tarifa_ofertada: tarifa })
+export const enviarOferta = (codigoViaje, conductorId, asociacionId, tarifa, tiempoLlegada) =>
+  apiPost({ 
+    action: 'enviarOferta', 
+    codigo_viaje: codigoViaje, 
+    conductor_id: conductorId, 
+    asociacion_id: asociacionId, 
+    tarifa_ofertada: tarifa,
+    tiempo_llegada: tiempoLlegada
+  })
 
 export const elegirOferta = (codigoViaje, conductorId) =>
   apiPost({ action: 'elegirOferta', codigo_viaje: codigoViaje, conductor_id: conductorId })

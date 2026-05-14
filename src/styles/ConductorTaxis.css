@@ -676,3 +676,23 @@ body {
   background: #333;
   color: #888;
 }
+
+.oferta-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.btn-maps-ruta {
+  background: rgba(123, 47, 190, 0.15);
+  border: 1.5px solid #7B2FBE;
+  animation: latirRuta 1.5s ease-in-out infinite;
+  width: 100%;
+}
+
+@keyframes latirRuta {
+  0%   { box-shadow: 0 0 6px rgba(123, 47, 190, 0.4); }
+  50%  { box-shadow: 0 0 14px rgba(123, 47, 190, 0.8); }
+  100% { box-shadow: 0 0 6px rgba(123, 47, 190, 0.4); }
+}
