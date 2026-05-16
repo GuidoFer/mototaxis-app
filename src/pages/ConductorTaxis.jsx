@@ -453,10 +453,6 @@ export default function ConductorTaxis() {
     const celularWA = celular.startsWith('591') ? celular : `591${celular}`
 
     const enviarWhatsApp = () => {
-      if (!tiempoLlegada.trim()) {
-        mostrarToast('error', 'Ingresa el tiempo de llegada.')
-        return
-      }
       const msg = encodeURIComponent(
         `🚕 ¡Hola! Soy tu conductor.\n\n` +
         `🔖 Código: ${ofertaAceptada.codigo}\n` +
@@ -465,7 +461,7 @@ export default function ConductorTaxis() {
         `🔖 Placa: ${conductor?.placa || ''}\n` +
         `🏁 Destino: ${ofertaAceptada.destino_referencia || 'No especificado'}\n` +
         `💰 Tarifa acordada: Bs. ${ofertaAceptada.tarifa}\n` +
-        `⏱ Paso a recogerte en: ${tiempoLlegada} minutos\n\n` +
+        `⏱ Paso a recogerte en: ${ofertaAceptada.tiempo_llegada || tiempoLlegada} minutos\n\n` +
         `Responde OK y te enviare mi ubicación en tiempo real. 📍`
       )
       window.open(`https://wa.me/${celularWA}?text=${msg}`, '_blank')
@@ -522,17 +518,6 @@ export default function ConductorTaxis() {
                 🏁 Ver destino en Maps
               </button>
             )}
-
-            <div className="campo-login" style={{ marginTop: '16px' }}>
-              <label>Tiempo de llegada (minutos)</label>
-              <input
-                className="input-login"
-                type="number"
-                placeholder="Ej: 5"
-                value={tiempoLlegada}
-                onChange={e => setTiempoLlegada(e.target.value)}
-              />
-            </div>
 
             <button className="btn-completar" onClick={enviarWhatsApp}>
               💬 Enviar mensaje al pasajero
@@ -824,25 +809,6 @@ export default function ConductorTaxis() {
                         </button>
                       </div>
                     )}
-
-                    {segs === 0 && <p className="oferta-expirada">⏰ Tiempo para ofertar expirado</p>}
-
-                    {conductor.estado !== 'disponible' && (
-                      <p style={{ fontSize: '0.75rem', color: '#666', textAlign: 'center' }}>
-                        Márcate como disponible para enviar ofertas.
-                      </p>
-                    )}
-
-                    <button
-                      className="btn-rechazar"
-                      onClick={() => {
-                        detenerAlarma()
-                        setViajesIgnorados(prev => [...prev, viaje.codigo])
-                      }}
-                    >
-                      Ignorar
-                    </button>
-                    
 
                     {segs === 0 && <p className="oferta-expirada">⏰ Tiempo para ofertar expirado</p>}
 
