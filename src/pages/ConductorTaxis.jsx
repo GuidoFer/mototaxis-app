@@ -736,7 +736,6 @@ export default function ConductorTaxis() {
                         {alarmaSilenciada ? '✅ Alarma desactivada' : '🔕 Silenciar alarma'}
                       </button>
                     )}
-
                     {/* CAMBIO 5: Viaje-datos con distancia y ruta completa */}
                     <div className="viaje-datos">
                       <div className="viaje-fila">
@@ -764,62 +763,86 @@ export default function ConductorTaxis() {
                       </div>
                     </div>
 
-                    <div className="viaje-maps-btns">
-                      {viaje.lat_pasajeros && viaje.lng_pasajeros && (
+                    {/* BOTÓN DESTINO + PRECIO */}
+                    {viaje.lat_destino && viaje.lng_destino && viaje.lat_pasajeros && viaje.lng_pasajeros && (
+                      <div className="oferta-campo-grupo">
                         <button
-                          className={`btn-maps ${viaje.lat_destino && viaje.lng_destino ? 'btn-maps-ruta' : ''}`}
-                          onClick={() => {
-                            if (viaje.lat_destino && viaje.lng_destino && conductor.lat && conductor.lng) {
-                              window.open(
-                                `https://www.google.com/maps/dir/${conductor.lat},${conductor.lng}/${viaje.lat_pasajeros},${viaje.lng_pasajeros}/${viaje.lat_destino},${viaje.lng_destino}`,
-                                '_blank'
-                              )
-                            } else {
-                              verEnMaps(viaje.lat_pasajeros, viaje.lng_pasajeros)
-                            }
-                          }}
+                          className="btn-maps btn-maps-ruta"
+                          onClick={() => window.open(
+                            `https://www.google.com/maps/dir/${viaje.lat_pasajeros},${viaje.lng_pasajeros}/${viaje.lat_destino},${viaje.lng_destino}`,
+                            '_blank'
+                          )}
                         >
-                          {viaje.lat_destino && viaje.lng_destino ? '🗺️ Ver ruta completa' : '📍 Ver origen en Maps'}
+                          🏁 Ver destino en Maps
                         </button>
-                      )}
-                    </div>
+                        <p className="oferta-campo-hint">Para calcular el precio del viaje</p>
+                        <input
+                          className="tarifa-input"
+                          type="number"
+                          min="1"
+                          placeholder="Bs. precio del viaje"
+                          value={tarifaActual}
+                          onChange={e => setTarifas(prev => ({ ...prev, [viaje.codigo]: e.target.value }))}
+                        />
+                      </div>
+                    )}
 
-                    {/* CAMBIO 1: Oferta-section con tarifa y tiempo */}
+                    {/* BOTÓN PASAJERO + TIEMPO */}
+                    {viaje.lat_pasajeros && viaje.lng_pasajeros && (
+                      <div className="oferta-campo-grupo">
+                        <button
+                          className="btn-maps"
+                          onClick={() => window.open(
+                            `https://www.google.com/maps/dir/${conductor.lat},${conductor.lng}/${viaje.lat_pasajeros},${viaje.lng_pasajeros}`,
+                            '_blank'
+                          )}
+                        >
+                          📍 Ver ubicación del pasajero
+                        </button>
+                        <p className="oferta-campo-hint">Para calcular cuánto tardas en llegar</p>
+                        <input
+                          className="tarifa-input"
+                          type="number"
+                          min="1"
+                          placeholder="Minutos para llegar"
+                          value={tiempos[viaje.codigo] || ''}
+                          onChange={e => setTiempos(prev => ({ ...prev, [viaje.codigo]: e.target.value }))}
+                        />
+                      </div>
+                    )}
+
+                    {/* BOTONES ENVIAR OFERTA E IGNORAR */}
                     {segs > 0 && conductor.estado === 'disponible' && (
-                      <div className="oferta-section">
-                        <div className="oferta-input-group">
-                          <div className="oferta-campo">
-                            <label className="oferta-label-input">Tarifa (Bs.)</label>
-                            <input
-                              className="tarifa-input"
-                              type="number"
-                              min="1"
-                              placeholder="Ej: 20"
-                              value={tarifaActual}
-                              onChange={e => setTarifas(prev => ({ ...prev, [viaje.codigo]: e.target.value }))}
-                            />
-                          </div>
-                          <div className="oferta-campo">
-                            <label className="oferta-label-input">Tiempo (min)</label>
-                            <input
-                              className="tarifa-input"
-                              type="number"
-                              min="1"
-                              placeholder="Ej: 5"
-                              value={tiempoActual}
-                              onChange={e => setTiempos(prev => ({ ...prev, [viaje.codigo]: e.target.value }))}
-                            />
-                          </div>
-                        </div>
+                      <div className="oferta-section" style={{ marginTop: '16px' }}>
                         <button
                           className="btn-enviar-oferta"
                           onClick={() => handleEnviarOferta(viaje)}
                           disabled={enviandoOferta}
+                          style={{ width: '100%' }}
                         >
                           {enviandoOferta ? '...' : 'Enviar oferta'}
                         </button>
                       </div>
                     )}
+
+                    {segs === 0 && <p className="oferta-expirada">⏰ Tiempo para ofertar expirado</p>}
+
+                    {conductor.estado !== 'disponible' && (
+                      <p style={{ fontSize: '0.75rem', color: '#666', textAlign: 'center' }}>
+                        Márcate como disponible para enviar ofertas.
+                      </p>
+                    )}
+
+                    <button
+                      className="btn-rechazar"
+                      onClick={() => {
+                        detenerAlarma()
+                        setViajesIgnorados(prev => [...prev, viaje.codigo])
+                      }}
+                    >
+                      Ignorar
+                    </button>
+                    
 
                     {segs === 0 && <p className="oferta-expirada">⏰ Tiempo para ofertar expirado</p>}
 

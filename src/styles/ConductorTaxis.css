@@ -696,3 +696,17 @@ body {
   50%  { box-shadow: 0 0 14px rgba(123, 47, 190, 0.8); }
   100% { box-shadow: 0 0 6px rgba(123, 47, 190, 0.4); }
 }
+/*ultimo cambio con boton ver destino y abajo cuadro de precio. Lo mismo con ubi de pasajero y cuadro de tiempo*/
+.oferta-campo-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.oferta-campo-hint {
+  font-size: 0.72rem;
+  color: #888;
+  margin: 0;
+  padding-left: 4px;
+}
