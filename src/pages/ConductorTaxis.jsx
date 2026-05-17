@@ -124,7 +124,7 @@ export default function ConductorTaxis() {
         if (viaje.estado === 'asignado' && viaje.conductor_id === conductor.id) {
           clearInterval(polling)
           viajeAsignadoRefCodigo.current = viaje.codigo
-          setOfertaAceptada({ ...viaje, tarifa: ofertaEnviada.tarifa })
+          setOfertaAceptada({ ...viaje, tarifa: ofertaEnviada.tarifa, tiempo_llegada: ofertaEnviada.tiempo })
           setOfertaEnviada(null)
           cambiarEstado('ocupado')
         } else if (viaje.estado === 'asignado' && viaje.conductor_id !== conductor.id) {
