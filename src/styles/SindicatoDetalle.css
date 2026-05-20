@@ -510,3 +510,9 @@
 .ofertas-emoji {
   font-size: 3rem;
 }
+/*agregamos tiempo de llegada en panel de pasajero*/
+.oferta-tiempo {
+  font-size: 0.78rem;
+  color: #2dc653;
+  font-weight: 600;
+}

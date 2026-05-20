@@ -167,6 +167,9 @@ function OfertasScreen({ solicitud, sindicato, ciudad, onLlamar, onVolver }) {
                     {idx === 0 ? '🏆 Mejor precio' : idx === 1 ? '2da opción' : '3ra opción'}
                   </span>
                   <span className="oferta-tarifa">Bs. {oferta.tarifa}</span>
+                  {oferta.tiempo_llegada && (
+                    <span className="oferta-tiempo">⏱ Llega en {oferta.tiempo_llegada} min</span>
+                  )}
                 </div>
                 <button
                   className="sinddetalle-btn-elegir"
